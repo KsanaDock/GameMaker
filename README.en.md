@@ -167,12 +167,7 @@ GameMaker/
 - Repository: <https://github.com/KsanaDock/GameMaker.git>
 - License: MIT
 
-## Suggested Next Additions
+## Acknowledgements
 
-If you plan to present this repository publicly, the next useful additions would be:
-
-- Screenshots or demo GIFs
-- A fuller account and login guide
-- Troubleshooting notes
-- Release installation instructions
-- A roadmap
+- Thanks to the Godot Engine team for building and maintaining an open, creator-friendly game engine.
+- Thanks to the author of the `godogen` project for the ideas and inspiration around Godot-related tooling and workflows.
