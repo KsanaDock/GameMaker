@@ -21,6 +21,13 @@
 		"plan_step": "Executing plan step-by-step.",
 		"plan_prefix": "Plan: ",
 		"credits_unit": " credits",
-		"bg_task_default": "Background Task"
+		"bg_task_default": "Background Task",
+		"start_creating": "Start Creating",
+		"choose_auth_method": "Choose Connection Method",
+		"input_api_key": "Input API Key",
+		"connect_ksanadock": "Connect KsanaDock",
+		"enter_api_key_title": "Set API Key",
+		"enter_api_key_placeholder": "Enter your OpenAI or compatible API Key here...",
+		"api_key_saved": "API Key saved and set to environment variable."
 	}
 }

@@ -15,6 +15,17 @@ var _bridge: Node # The KsanaDock Bridge instance
 @onready var _clear_btn: Button = %ClearBtn
 @onready var _ctx_scene_btn: Button = %CtxSceneBtn
 @onready var _ref_list: HBoxContainer = %RefList
+@onready var _input_bg: PanelContainer = $InputBG
+
+signal login_requested
+signal api_key_saved
+
+@onready var _start_overlay: CenterContainer = %StartOverlay
+@onready var _start_btn: Button = %StartBtn
+@onready var _auth_dialog: AcceptDialog = %AuthDialog
+@onready var _api_key_dialog: AcceptDialog = %APIKeyDialog
+@onready var _api_key_input: LineEdit = %APIKeyInput
+var _connect_ksanadock_btn: Button
 
 var _messages: Array[Dictionary] = []  # {role, content}
 var _current_bubble: PanelContainer = null
@@ -36,7 +47,9 @@ func _ready() -> void:
 	
 	_apply_theme()
 	_update_ui_localization()
+	_create_auth_ui()
 	_connect_signals()
+	_check_auth_status()
 
 
 func _on_locale_changed(_lang: String) -> void:
@@ -52,6 +65,7 @@ func _on_input_focus_exited() -> void:
 
 
 func initialize(auth: KAuthClient) -> void:
+	if _auth == auth: return
 	_auth = auth
 	_ai_client = KAIClient.new()
 	_ai_client.initialize(_auth)
@@ -59,9 +73,21 @@ func initialize(auth: KAuthClient) -> void:
 	_ai_client.stream_done.connect(_on_stream_done)
 	_ai_client.stream_error.connect(_on_stream_error)
 	
+	_check_auth_status()
+	
 	# 欢迎消息
 	if _messages.is_empty():
 		_add_bubble(MessageBubble.Role.AI, _tr("welcome"))
+
+func _check_auth_status() -> void:
+	var authed = false
+	if _auth:
+		authed = _auth.is_logged_in() or _auth.has_api_key()
+	
+	if _start_overlay:
+		_start_overlay.visible = not authed
+	if _input_bg:
+		_input_bg.visible = authed
 
 
 func _apply_theme() -> void:
@@ -94,7 +120,18 @@ func _tr(key: String) -> String:
 func _update_ui_localization() -> void:
 	if _grab_btn:
 		_grab_btn.text = _tr("grab_output")
-	
+	if _start_btn:
+		_start_btn.text = _tr("start_creating")
+	if _auth_dialog:
+		_auth_dialog.title = _tr("choose_auth_method")
+		_auth_dialog.get_ok_button().text = _tr("input_api_key")
+		if _connect_ksanadock_btn:
+			_connect_ksanadock_btn.text = _tr("connect_ksanadock")
+	if _api_key_dialog:
+		_api_key_dialog.title = _tr("enter_api_key_title")
+	if _api_key_input:
+		_api_key_input.placeholder_text = _tr("enter_api_key_placeholder")
+
 	# 如果只有一条欢迎消息，则尝试刷新欢迎消息的语言
 	if _messages.is_empty() and _msg_list.get_child_count() == 1:
 		var first = _msg_list.get_child(0)
@@ -114,6 +151,60 @@ func _connect_signals() -> void:
 	_grab_btn.pressed.connect(_grab_output_selection)
 	if has_node("%CtxBar"):
 		get_node("%CtxBar").add_child(_grab_btn)
+
+func _create_auth_ui() -> void:
+	if not _auth_dialog: return
+	
+	# 设置独占/瞬态属性
+	_auth_dialog.transient = true
+	_auth_dialog.exclusive = true
+	_api_key_dialog.transient = true
+	_api_key_dialog.exclusive = true
+	
+	# 添加连接按钮并保存引用 (防止 @tool 下重复添加)
+	if _connect_ksanadock_btn == null:
+		_connect_ksanadock_btn = _auth_dialog.add_button("", true, "connect")
+	
+	if not _auth_dialog.confirmed.is_connected(_on_api_key_choice):
+		_auth_dialog.confirmed.connect(_on_api_key_choice)
+	if not _auth_dialog.custom_action.is_connected(_on_auth_custom_action):
+		_auth_dialog.custom_action.connect(_on_auth_custom_action)
+	
+	if not _api_key_dialog.confirmed.is_connected(_on_api_key_submitted):
+		_api_key_dialog.confirmed.connect(_on_api_key_submitted)
+	
+	if not _start_btn.pressed.is_connected(_on_start_pressed):
+		_start_btn.pressed.connect(_on_start_pressed)
+	
+	_update_ui_localization()
+
+
+func _on_auth_custom_action(action: String) -> void:
+	if action == "connect":
+		_auth_dialog.hide()
+		_on_ksanadock_choice()
+
+func _on_start_pressed() -> void:
+	_auth_dialog.popup_centered()
+
+func _on_api_key_choice() -> void:
+	_api_key_dialog.popup_centered()
+
+func _on_ksanadock_choice() -> void:
+	login_requested.emit()
+
+func _on_api_key_submitted() -> void:
+	var key = _api_key_input.text.strip_edges()
+	if key != "":
+		if _auth:
+			_auth.set_api_key(key)
+			_auth.update_external_env(key)
+			_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("api_key_saved"))
+			_check_auth_status()
+			api_key_saved.emit()
+			
+			if _bridge and _bridge.has_method("restart_service"):
+				_bridge.restart_service()
 
 
 func _gui_input(event: InputEvent) -> void:

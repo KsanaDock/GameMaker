@@ -31,11 +31,21 @@ func _enter_tree() -> void:
 	_chat = ChatScene.instantiate()
 	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _chat)
 
-	# 注册 Profile Dock
+	# 注册 Profile Dock (仅在登录后显示)
 	_profile = ProfileScene.instantiate()
 	_profile.logout_requested.connect(_on_logout)
 	_profile.login_requested.connect(_show_login)
-	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _profile)
+	
+	if _auth.is_logged_in():
+		add_control_to_dock(DOCK_SLOT_RIGHT_BL, _profile)
+	
+	# 注册 Chat Dock 信号
+	_chat.login_requested.connect(_show_login)
+	_chat.api_key_saved.connect(_on_api_key_saved)
+	
+	# 同步 API Key 到环境变量
+	if _auth.has_api_key():
+		OS.set_environment("KSANADOCK_API_KEY", _auth.get_api_key())
 
 	# 注册 Terminal Dock
 	_terminal = TerminalScene.instantiate()
@@ -63,8 +73,8 @@ func _enter_tree() -> void:
 	# 检查登录状态
 	if _auth.is_logged_in():
 		_auth.refresh_session()
-	else:
-		_show_login()
+	
+	_initialize_docks()
 
 	print("[KsanaDock] Plugin loaded.")
 
@@ -235,20 +245,37 @@ func _exit_tree() -> void:
 
 
 func _show_login() -> void:
+	if _login_panel and is_instance_valid(_login_panel):
+		_login_panel.popup_centered()
+		_login_panel.grab_focus()
+		return
+		
 	_login_panel = LoginPanelScene.instantiate()
 	_login_panel.set_auth(_auth)
 	_login_panel.login_success.connect(_on_login_success)
+	
+	# 设置为瞬态窗口并置顶（模态）
+	_login_panel.transient = true
+	_login_panel.exclusive = true
+	
 	EditorInterface.get_base_control().add_child(_login_panel)
 	_login_panel.popup_centered(Vector2i(420, 580))
 
+func _on_api_key_saved() -> void:
+	if _chat:
+		_chat._check_auth_status()
 
 func _on_login_success(_token: String, _user: Dictionary) -> void:
 	_initialize_docks()
+	if _profile and not _profile.get_parent():
+		add_control_to_dock(DOCK_SLOT_RIGHT_BL, _profile)
+	if _chat:
+		_chat._check_auth_status()
 
 
 func _on_silent_login_failed(_error: String) -> void:
-	if not _login_panel or not is_instance_valid(_login_panel):
-		_show_login()
+	# 静默登录失败不再自动弹出窗口
+	pass
 
 
 func _initialize_docks() -> void:
@@ -265,4 +292,7 @@ func _on_logout() -> void:
 	_auth.logout()
 	if _chat:
 		_chat._clear_chat()
+		_chat._check_auth_status()
+	if _profile and _profile.get_parent():
+		remove_control_from_docks(_profile)
 	_show_login()

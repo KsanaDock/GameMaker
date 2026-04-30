@@ -21,6 +21,13 @@
 		"plan_step": "开始逐步执行计划。",
 		"plan_prefix": "方案：",
 		"credits_unit": " 积分",
-		"bg_task_default": "后台任务"
+		"bg_task_default": "后台任务",
+		"start_creating": "开始创作",
+		"choose_auth_method": "选择接入方式",
+		"input_api_key": "输入 API Key",
+		"connect_ksanadock": "接入 KsanaDock",
+		"enter_api_key_title": "设置 API Key",
+		"enter_api_key_placeholder": "在此输入您的 OpenAI 或兼容 API Key...",
+		"api_key_saved": "API Key 已保存并设置到环境变量。"
 	}
 }

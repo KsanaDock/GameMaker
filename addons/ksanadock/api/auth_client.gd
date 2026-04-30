@@ -14,6 +14,7 @@ const SUPABASE_ANON_KEY := "sb_publishable_BAYzIdIagPSRjjd6LVBfjw_YgCoA9fr"
 const SETTINGS_TOKEN_KEY := "ksanadock/auth_token"
 const SETTINGS_REFRESH_TOKEN_KEY := "ksanadock/refresh_token"
 const SETTINGS_USER_KEY := "ksanadock/user_data"
+const SETTINGS_API_KEY_KEY := "ksanadock/api_key"
 
 var _token: String = ""
 var _refresh_token: String = ""
@@ -39,6 +40,58 @@ func is_logged_in() -> bool:
 
 func get_token() -> String: return _token
 func get_user() -> Dictionary: return _user
+
+func get_api_key() -> String:
+	var es := EditorInterface.get_editor_settings()
+	if es.has_setting(SETTINGS_API_KEY_KEY):
+		return es.get_setting(SETTINGS_API_KEY_KEY)
+	return ""
+
+func set_api_key(key: String) -> void:
+	var es := EditorInterface.get_editor_settings()
+	es.set_setting(SETTINGS_API_KEY_KEY, key)
+	OS.set_environment("KSANADOCK_API_KEY", key)
+
+func has_api_key() -> bool:
+	return get_api_key() != ""
+
+func update_external_env(key: String) -> void:
+	var env_path = ProjectSettings.globalize_path("res://addons/ksanadock_bridge/service/.env")
+	
+	if not FileAccess.file_exists(env_path):
+		# .env 不存在，基于 .env.example 创建
+		var example_path = ProjectSettings.globalize_path("res://addons/ksanadock_bridge/service/.env.example")
+		if FileAccess.file_exists(example_path):
+			var example_content = FileAccess.get_file_as_string(example_path)
+			var f = FileAccess.open(env_path, FileAccess.WRITE)
+			if f:
+				f.store_string(example_content)
+				f.close()
+		else:
+			# 连 .env.example 都没有，创建一个最简的
+			var f = FileAccess.open(env_path, FileAccess.WRITE)
+			if f:
+				f.store_string("OPENROUTER_API_KEY=\nSITE_URL=http://localhost:9080\nSITE_NAME=KsanaDock Agent\n")
+				f.close()
+	
+	var content = FileAccess.get_file_as_string(env_path)
+	var lines = content.split("\n")
+	var found = false
+	for i in range(lines.size()):
+		if lines[i].begins_with("OPENROUTER_API_KEY="):
+			lines[i] = "OPENROUTER_API_KEY=" + key
+			found = true
+			break
+	
+	if not found:
+		# 插入到第一行
+		lines.insert(0, "OPENROUTER_API_KEY=" + key)
+	
+	var f = FileAccess.open(env_path, FileAccess.WRITE)
+	if f:
+		f.store_string("\n".join(lines))
+		f.close()
+		print("[KsanaDock] Updated ", env_path)
 
 
 func login(email: String, password: String) -> void:

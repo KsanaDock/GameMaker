@@ -207,6 +207,13 @@ func get_agent_history(callback: Callable) -> void:
     }
     _clients[0].send_text(JSON.stringify(request))
 
+func restart_service() -> void:
+    print("[KsanaDock Bridge] Restarting Agent service...")
+    _stop_agent_service()
+    # Wait a bit for the port to be released
+    await get_tree().create_timer(1.0).timeout
+    _start_agent_service()
+
 func _register_settings() -> void:
     var setting_path = "ksanadock/agent/service_path"
     if not ProjectSettings.has_setting(setting_path):

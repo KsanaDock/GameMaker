@@ -19,8 +19,8 @@ func initialize(auth: KAuthClient) -> void:
 
 ## 发送对话消息
 func send_message(messages: Array[Dictionary], _model: String = "default") -> void:
-	if not _auth or not _auth.is_logged_in():
-		stream_error.emit("Not logged in.")
+	if not _auth or (not _auth.is_logged_in() and not _auth.has_api_key()):
+		stream_error.emit("Not logged in or no API key.")
 		return
 
 	var last_prompt: String = ""
@@ -28,8 +28,10 @@ func send_message(messages: Array[Dictionary], _model: String = "default") -> vo
 		last_prompt = str(messages[-1].get("content", ""))
 
 	var url: String = API_BASE_URL + "/api/game/chat"
+	
+	var auth_val = _auth.get_token() if _auth.is_logged_in() else _auth.get_api_key()
 	var headers: PackedStringArray = [
-		"Authorization: Bearer " + _auth.get_token(),
+		"Authorization: Bearer " + auth_val,
 		"Content-Type: application/json"
 	]
 	var body: String = JSON.stringify({
