@@ -9,7 +9,7 @@ extends EditorPlugin
 signal agent_event(params: Dictionary)
 signal agent_reply(params: Dictionary)
 
-const PORT = 9080
+const PORT = 9090
 
 var _server: TCPServer
 var _clients: Array[WebSocketPeer] = []

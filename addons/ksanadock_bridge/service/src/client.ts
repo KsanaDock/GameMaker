@@ -11,7 +11,7 @@ export class BridgeClient {
     private callbacks: Map<string, (result: any) => void> = new Map();
     private methodHandlers: Map<string, (params: any) => Promise<any>> = new Map();
 
-    constructor(port: number = 9080) {
+    constructor(port: number = 9090) {
         this.url = `ws://localhost:${port}`;
     }
 

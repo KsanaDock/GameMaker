@@ -66,7 +66,13 @@ Available Subagents:
             const restored = await this.sessionStore.loadSession('current');
             if (restored && Array.isArray(restored) && restored.length > 0) {
                 // Keep the NEW system prompt as the core context, but append history
-                this.history = [systemPrompt, ...restored.filter(m => m.role !== 'system')];
+                const validHistory = restored
+                    .filter(m => m && m.role && m.role !== 'system')
+                    .map(m => ({
+                        ...m,
+                        role: m.role || 'assistant' // Fallback just in case
+                    }));
+                this.history = [systemPrompt, ...validHistory];
                 console.log(`[AgentLoop] Restored ${restored.length} messages from session.`);
             } else {
                 this.history = [systemPrompt];
@@ -242,8 +248,16 @@ Available Subagents:
                 );
                 return res.data;
             } catch (err: any) {
-                if (err.response && err.response.status === 400) {
-                    throw err; // Don't retry validation errors
+                if (err.response) {
+                    console.error("[AgentLoop API Error Response]", JSON.stringify(err.response.data, null, 2));
+                    if (err.response.status === 400 || err.response.status === 422) {
+                        // Include the API's own error message if available
+                        const apiError = err.response.data?.error?.message || err.response.data?.message || "";
+                        if (apiError) {
+                            err.message = `${err.message}: ${apiError}`;
+                        }
+                        throw err; 
+                    }
                 }
                 console.warn(`[AgentLoop] API request failed (${err.message}). Retry ${i+1}/${retries}...`);
                 if (i === retries - 1) throw err;

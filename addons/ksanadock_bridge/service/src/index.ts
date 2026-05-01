@@ -22,7 +22,7 @@ async function main() {
     console.log('--- KsanaDock Agent Service Starting (V2 Architecture) ---');
     console.log('Project Root:', projectRoot);
     
-    const client = new BridgeClient(9080);
+    const client = new BridgeClient(9090);
     const toolRegistry = setupTools(client, projectRoot);
     const agentLoop = new AgentLoop(client, toolRegistry, projectRoot);
     

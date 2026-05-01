@@ -71,7 +71,7 @@ func update_external_env(key: String) -> void:
 			# 连 .env.example 都没有，创建一个最简的
 			var f = FileAccess.open(env_path, FileAccess.WRITE)
 			if f:
-				f.store_string("OPENROUTER_API_KEY=\nSITE_URL=http://localhost:9080\nSITE_NAME=GodotMaker Agent\n")
+				f.store_string("OPENROUTER_API_KEY=\nSITE_URL=http://localhost:9090\nSITE_NAME=GodotMaker Agent\n")
 				f.close()
 	
 	var content = FileAccess.get_file_as_string(env_path)

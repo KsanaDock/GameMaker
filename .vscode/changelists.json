@@ -1,0 +1,15 @@
+{
+  "changelists": [
+    {
+      "name": "Default",
+      "files": [
+        "addons/godot_maker/api/auth_client.gd",
+        "addons/ksanadock_bridge/ksanadock_bridge.gd",
+        "addons/ksanadock_bridge/service/src/client.ts",
+        "addons/ksanadock_bridge/service/src/core/loop.ts",
+        "addons/ksanadock_bridge/service/src/index.ts"
+      ]
+    }
+  ],
+  "active": "Default"
+}
