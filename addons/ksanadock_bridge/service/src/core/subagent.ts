@@ -8,7 +8,7 @@ import type { BridgeClient } from '../client.js';
 dotenv.config();
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = process.env.MODEL || 'google/gemini-3-flash-preview';
+const MODEL = process.env.MODEL || 'deepseek/deepseek-v4-flash';
 
 export class Subagent {
     private toolRegistry: ToolRegistry;

@@ -37,6 +37,15 @@ var _input_normal: StyleBoxFlat
 var _input_focused: StyleBoxFlat
 
 
+func _process(_delta: float) -> void:
+	if not Engine.is_editor_hint(): return
+	
+	if _bridge and not is_instance_valid(_bridge):
+		_bridge = null
+		
+	if not _bridge and EditorInterface.get_base_control().has_meta("ksanadock_bridge"):
+		set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
+
 func _ready() -> void:
 	name = "Chat"
 	if _scroll:
@@ -203,6 +212,9 @@ func _on_api_key_submitted() -> void:
 			_check_auth_status()
 			api_key_saved.emit()
 			
+			if not _bridge and EditorInterface.get_base_control().has_meta("ksanadock_bridge"):
+				set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
+			
 			if _bridge and _bridge.has_method("restart_service"):
 				_bridge.restart_service()
 
@@ -256,6 +268,9 @@ func _send_message() -> void:
 
 	_is_streaming = true
 	_send_btn.disabled = true
+
+	if not _bridge and EditorInterface.get_base_control().has_meta("ksanadock_bridge"):
+		set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
 
 	if _bridge and _bridge.has_method("send_chat_to_agent"):
 		_bridge.send_chat_to_agent(text, _on_bridge_response, false)
@@ -360,15 +375,18 @@ func _send_direct_message(text: String, auto_run: bool = false) -> void:
 	_messages.append({"role": "user", "content": text})
 	_is_streaming = true
 	_send_btn.disabled = true
+	if not _bridge and EditorInterface.get_base_control().has_meta("ksanadock_bridge"):
+		set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
+
 	if _bridge and _bridge.has_method("send_chat_to_agent"):
 		_bridge.send_chat_to_agent(text, _on_bridge_response, auto_run)
 
 
 func set_bridge(bridge: Node) -> void:
 	_bridge = bridge
-	if _bridge.has_signal("agent_event"):
+	if _bridge.has_signal("agent_event") and not _bridge.agent_event.is_connected(_on_agent_event):
 		_bridge.agent_event.connect(_on_agent_event)
-	if _bridge.has_signal("agent_reply"):
+	if _bridge.has_signal("agent_reply") and not _bridge.agent_reply.is_connected(_on_agent_reply):
 		_bridge.agent_reply.connect(_on_agent_reply)
 	if _bridge.has_method("get_agent_history"):
 		_bridge.get_agent_history(_render_history)
