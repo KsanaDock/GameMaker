@@ -41,21 +41,29 @@ func is_logged_in() -> bool:
 func get_token() -> String: return _token
 func get_user() -> Dictionary: return _user
 
-func get_api_key() -> String:
-	var es := EditorInterface.get_editor_settings()
-	if es.has_setting(SETTINGS_API_KEY_KEY):
-		return es.get_setting(SETTINGS_API_KEY_KEY)
+func get_api_key(provider: String = "") -> String:
+	var env_path = ProjectSettings.globalize_path("res://addons/ksanadock_bridge/service/.env")
+	if not FileAccess.file_exists(env_path):
+		return ""
+		
+	var content = FileAccess.get_file_as_string(env_path)
+	var prefix = "OPENROUTER_API_KEY="
+	if provider == "siliconflow":
+		prefix = "SILICONFLOW_API_KEY="
+	
+	for line in content.split("\n"):
+		if line.begins_with(prefix):
+			return line.split("=")[1].strip_edges()
 	return ""
 
-func set_api_key(key: String) -> void:
-	var es := EditorInterface.get_editor_settings()
-	es.set_setting(SETTINGS_API_KEY_KEY, key)
+func set_api_key(key: String, provider: String = "") -> void:
+	update_external_env(key, provider)
 	OS.set_environment("KSANADOCK_API_KEY", key)
 
-func has_api_key() -> bool:
-	return get_api_key() != ""
+func has_api_key(provider: String = "") -> bool:
+	return get_api_key(provider) != ""
 
-func update_external_env(key: String) -> void:
+func update_external_env(key: String, provider: String = "") -> void:
 	var env_path = ProjectSettings.globalize_path("res://addons/ksanadock_bridge/service/.env")
 	
 	if not FileAccess.file_exists(env_path):
@@ -71,21 +79,24 @@ func update_external_env(key: String) -> void:
 			# 连 .env.example 都没有，创建一个最简的
 			var f = FileAccess.open(env_path, FileAccess.WRITE)
 			if f:
-				f.store_string("OPENROUTER_API_KEY=\nSITE_URL=http://localhost:9090\nSITE_NAME=GodotMaker Agent\n")
+				f.store_string("OPENROUTER_API_KEY=\nSILICONFLOW_API_KEY=\nSITE_URL=http://localhost:9090\nSITE_NAME=GodotMaker Agent\n")
 				f.close()
 	
 	var content = FileAccess.get_file_as_string(env_path)
 	var lines = content.split("\n")
+	var prefix = "OPENROUTER_API_KEY="
+	if provider == "siliconflow":
+		prefix = "SILICONFLOW_API_KEY="
+		
 	var found = false
 	for i in range(lines.size()):
-		if lines[i].begins_with("OPENROUTER_API_KEY="):
-			lines[i] = "OPENROUTER_API_KEY=" + key
+		if lines[i].begins_with(prefix):
+			lines[i] = prefix + key
 			found = true
 			break
 	
 	if not found:
-		# 插入到第一行
-		lines.insert(0, "OPENROUTER_API_KEY=" + key)
+		lines.insert(0, prefix + key)
 	
 	var f = FileAccess.open(env_path, FileAccess.WRITE)
 	if f:

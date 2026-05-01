@@ -62,6 +62,14 @@ theme_override_font_sizes/font_size = 12
 icon = ExtResource("3")
 icon_alignment = 1
 
+[node name="SettingsBtn" type="Button" parent="HeaderBG/Margin/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 28)
+layout_mode = 2
+tooltip_text = "Settings"
+theme_override_font_sizes/font_size = 11
+text = "设置"
+
 [node name="Scroll" type="ScrollContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
@@ -153,6 +161,22 @@ theme_override_font_sizes/font_size = 16
 icon = ExtResource("5")
 icon_alignment = 1
 
+[node name="ProviderBar" type="HBoxContainer" parent="InputBG/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ProviderBtn" type="OptionButton" parent="InputBG/Margin/VBox/ProviderBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+
+[node name="ModelSelectBtn" type="OptionButton" parent="InputBG/Margin/VBox/ProviderBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+visible = false
+
 [node name="AuthDialog" type="AcceptDialog" parent="."]
 unique_name_in_owner = true
 title = "Choose Auth Method"
@@ -178,4 +202,55 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 placeholder_text = "Enter your API Key..."
+secret = true
+
+[node name="SettingsDialog" type="AcceptDialog" parent="."]
+unique_name_in_owner = true
+title = "Settings"
+size = Vector2i(450, 240)
+exclusive = false
+transient = true
+
+[node name="VBox" type="VBoxContainer" parent="SettingsDialog"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 442.0
+offset_bottom = 191.0
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="SettingsDialog/VBox"]
+layout_mode = 2
+text = "API Key Management"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="SettingsDialog/VBox"]
+layout_mode = 2
+
+[node name="Grid" type="GridContainer" parent="SettingsDialog/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="SFLabel" type="Label" parent="SettingsDialog/VBox/Grid"]
+layout_mode = 2
+text = "SiliconFlow Key:"
+
+[node name="SiliconFlowInput" type="LineEdit" parent="SettingsDialog/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "sk-..."
+secret = true
+
+[node name="ORLabel" type="Label" parent="SettingsDialog/VBox/Grid"]
+layout_mode = 2
+text = "OpenRouter Key:"
+
+[node name="OpenRouterInput" type="LineEdit" parent="SettingsDialog/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "sk-or-v1-..."
 secret = true

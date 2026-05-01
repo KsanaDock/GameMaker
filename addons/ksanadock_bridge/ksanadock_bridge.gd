@@ -160,7 +160,7 @@ func _handle_chat_proxy(_client: WebSocketPeer, _id, _params: Dictionary) -> voi
     pass
 
 ## UI API
-func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = false) -> void:
+func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = false, provider: String = "", model: String = "", api_key: String = "") -> void:
     if _clients.is_empty():
         callback.call({"error": "No agent connected"})
         return
@@ -179,7 +179,10 @@ func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = fa
         "params": {
             "message": message,
             "autoRun": auto_run,
-            "active_scene": active_scene
+            "active_scene": active_scene,
+            "provider": provider,
+            "model": model,
+            "api_key": api_key
         },
         "id": req_id
     }

@@ -132,19 +132,32 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
     }
 
     private async callOpenRouter(messages: Message[], tools: any[], retries = 3) {
+        const provider = process.env.LLM_PROVIDER || 'openrouter';
+        let apiKey = process.env.OPENROUTER_API_KEY;
+        if (provider === 'siliconflow') {
+            apiKey = process.env.SILICONFLOW_API_KEY;
+        }
+        
+        const model = process.env.MODEL || 'google/gemini-3-flash-preview';
+        
+        let url = 'https://openrouter.ai/api/v1/chat/completions';
+        if (provider === 'siliconflow') {
+            url = 'https://api.siliconflow.cn/v1/chat/completions';
+        }
+
         for (let i = 0; i < retries; i++) {
             try {
                 const res = await axios.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
+                    url,
                     {
-                        model: MODEL,
+                        model: model,
                         messages: messages,
                         tools: tools.length > 0 ? tools : undefined,
                         tool_choice: tools.length > 0 ? 'auto' : undefined
                     },
                     {
                         headers: {
-                            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                            'Authorization': `Bearer ${apiKey}`,
                             'HTTP-Referer': 'https://github.com/ksanadock/ksanadock',
                             'X-Title': 'KsanaDock Subagent',
                             'Content-Type': 'application/json'

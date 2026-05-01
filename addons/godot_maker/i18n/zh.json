@@ -28,6 +28,11 @@
 		"connect_ksanadock": "接入 GodotMaker",
 		"enter_api_key_title": "设置 API Key",
 		"enter_api_key_placeholder": "在此输入您的 OpenAI 或兼容 API Key...",
-		"api_key_saved": "API Key 已保存并设置到环境变量。"
+		"api_key_saved": "API Key 已保存并设置到环境变量。",
+		"settings_title": "设置",
+		"api_key_management": "API Key 管理",
+		"siliconflow_key": "硅基流动 (SiliconFlow) API Key",
+		"openrouter_key": "OpenRouter API Key",
+		"settings_save": "保存设置"
 	}
 }

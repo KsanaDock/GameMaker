@@ -16,6 +16,10 @@ var _bridge: Node # The GodotMaker Bridge instance
 @onready var _ctx_scene_btn: Button = %CtxSceneBtn
 @onready var _ref_list: HBoxContainer = %RefList
 @onready var _input_bg: PanelContainer = $InputBG
+@onready var _provider_btn: OptionButton = %ProviderBtn
+@onready var _model_select_btn: OptionButton = %ModelSelectBtn
+var _current_provider: String = ""
+var _selected_model: String = ""
 
 signal login_requested
 signal api_key_saved
@@ -25,6 +29,10 @@ signal api_key_saved
 @onready var _auth_dialog: AcceptDialog = %AuthDialog
 @onready var _api_key_dialog: AcceptDialog = %APIKeyDialog
 @onready var _api_key_input: LineEdit = %APIKeyInput
+@onready var _settings_btn: Button = %SettingsBtn
+@onready var _settings_dialog: AcceptDialog = %SettingsDialog
+@onready var _sf_input: LineEdit = %SiliconFlowInput
+@onready var _or_input: LineEdit = %OpenRouterInput
 var _connect_ksanadock_btn: Button
 
 var _messages: Array[Dictionary] = []  # {role, content}
@@ -59,7 +67,25 @@ func _ready() -> void:
 	_create_auth_ui()
 	_connect_signals()
 	_check_auth_status()
+	
+	if _auth:
+		_load_persisted_state()
 
+
+func _load_persisted_state() -> void:
+	var es := EditorInterface.get_editor_settings()
+	var saved_provider = es.get_setting("ksanadock/ai_provider") if es.has_setting("ksanadock/ai_provider") else ""
+	if saved_provider == "siliconflow":
+		if _provider_btn: _provider_btn.select(1)
+		_current_provider = "siliconflow"
+	elif saved_provider == "openrouter":
+		if _provider_btn: _provider_btn.select(2)
+		_current_provider = "openrouter"
+		
+	if _current_provider != "":
+		var key = _auth.get_api_key(_current_provider) if _auth else ""
+		if key != "":
+			_validate_and_fetch_models(key, _current_provider)
 
 func _on_locale_changed(_lang: String) -> void:
 	_update_ui_localization()
@@ -112,6 +138,9 @@ func _apply_theme() -> void:
 	_ctx_scene_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
 	_ctx_scene_btn.add_theme_stylebox_override("hover", KPalette.btn_secondary_hover())
 
+	_settings_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
+	_settings_btn.add_theme_stylebox_override("hover", KPalette.btn_secondary_hover())
+
 	_input_normal = KPalette.input_style_normal()
 	_input_focused = KPalette.input_style_focused()
 	_input_field.add_theme_stylebox_override("normal", _input_normal)
@@ -140,6 +169,22 @@ func _update_ui_localization() -> void:
 		_api_key_dialog.title = _tr("enter_api_key_title")
 	if _api_key_input:
 		_api_key_input.placeholder_text = _tr("enter_api_key_placeholder")
+	
+	if _settings_btn:
+		_settings_btn.text = _tr("settings_title")
+	if _settings_dialog:
+		_settings_dialog.title = _tr("settings_title")
+		_settings_dialog.get_ok_button().text = _tr("settings_save")
+		var vbox = _settings_dialog.get_child(0, true) # VBox
+		if vbox:
+			var label = vbox.get_node_or_null("Label")
+			if label: label.text = _tr("api_key_management")
+			var grid = vbox.get_node_or_null("Grid")
+			if grid:
+				var sf_label = grid.get_node_or_null("SFLabel")
+				if sf_label: sf_label.text = _tr("siliconflow_key")
+				var or_label = grid.get_node_or_null("ORLabel")
+				if or_label: or_label.text = _tr("openrouter_key")
 
 	# 如果只有一条欢迎消息，则尝试刷新欢迎消息的语言
 	if _messages.is_empty() and _msg_list.get_child_count() == 1:
@@ -152,6 +197,8 @@ func _connect_signals() -> void:
 	_send_btn.pressed.connect(_send_message)
 	_clear_btn.pressed.connect(_clear_chat)
 	_ctx_scene_btn.pressed.connect(_attach_scene_context)
+	_settings_btn.pressed.connect(_open_settings)
+	_settings_dialog.confirmed.connect(_on_settings_confirmed)
 	
 	_grab_btn = Button.new()
 	_grab_btn.text = _tr("grab_output")
@@ -184,8 +231,39 @@ func _create_auth_ui() -> void:
 	
 	if not _start_btn.pressed.is_connected(_on_start_pressed):
 		_start_btn.pressed.connect(_on_start_pressed)
+		
+	if _provider_btn:
+		_provider_btn.clear()
+		_provider_btn.add_item("选择大模型代理商...", 0)
+		_provider_btn.set_item_disabled(0, true)
+		_provider_btn.add_item("硅基流动 (SiliconFlow)", 1)
+		_provider_btn.add_item("OpenRouter", 2)
+		
+		# Remove radio circles from popup items
+		var popup = _provider_btn.get_popup()
+		for i in range(popup.get_item_count()):
+			popup.set_item_as_radio_checkable(i, false)
+			popup.set_item_as_checkable(i, false)
+			
+		_provider_btn.select(0)
+		if not _provider_btn.item_selected.is_connected(_on_provider_selected):
+			_provider_btn.item_selected.connect(_on_provider_selected)
 	
 	_update_ui_localization()
+
+func _on_provider_selected(index: int) -> void:
+	if index == 1:
+		_current_provider = "siliconflow"
+	elif index == 2:
+		_current_provider = "openrouter"
+	else:
+		return
+	
+	var existing_key = _auth.get_api_key(_current_provider) if _auth else ""
+	if existing_key == "":
+		_api_key_dialog.popup_centered()
+	else:
+		_validate_and_fetch_models(existing_key, _current_provider)
 
 
 func _on_auth_custom_action(action: String) -> void:
@@ -204,19 +282,131 @@ func _on_ksanadock_choice() -> void:
 
 func _on_api_key_submitted() -> void:
 	var key = _api_key_input.text.strip_edges()
-	if key != "":
-		if _auth:
-			_auth.set_api_key(key)
-			_auth.update_external_env(key)
-			_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("api_key_saved"))
-			_check_auth_status()
-			api_key_saved.emit()
+	if key == "": return
+	
+	if _current_provider == "":
+		_current_provider = "openrouter"
+	
+	_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "Validating API Key for " + _current_provider + "...")
+	_validate_and_fetch_models(key, _current_provider)
+
+
+func _open_settings() -> void:
+	if _auth:
+		_sf_input.text = _auth.get_api_key("siliconflow")
+		_or_input.text = _auth.get_api_key("openrouter")
+	_settings_dialog.popup_centered()
+
+
+func _on_settings_confirmed() -> void:
+	var sf_key = _sf_input.text.strip_edges()
+	var or_key = _or_input.text.strip_edges()
+	
+	if _auth:
+		_auth.set_api_key(sf_key, "siliconflow")
+		_auth.set_api_key(or_key, "openrouter")
+		
+		# 如果当前选中的 Provider 的 Key 发生了变化，尝试重新拉取模型
+		if _current_provider == "siliconflow" and sf_key != "":
+			_validate_and_fetch_models(sf_key, "siliconflow")
+		elif _current_provider == "openrouter" and or_key != "":
+			_validate_and_fetch_models(or_key, "openrouter")
 			
-			if not _bridge and EditorInterface.get_base_control().has_meta("ksanadock_bridge"):
-				set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("api_key_saved"))
+
+func _validate_and_fetch_models(key: String, provider: String) -> void:
+	if provider == "openrouter":
+		var url = "https://openrouter.ai/api/v1/auth/key"
+		var http := HTTPRequest.new()
+		add_child(http)
+		http.request_completed.connect(_on_openrouter_auth_checked.bind(http, key, provider))
+		http.request(url, ["Authorization: Bearer " + key], HTTPClient.METHOD_GET)
+	else:
+		var url = "https://api.siliconflow.cn/v1/models"
+		var http := HTTPRequest.new()
+		add_child(http)
+		http.request_completed.connect(_on_models_fetched.bind(http, key, provider))
+		http.request(url, ["Authorization: Bearer " + key], HTTPClient.METHOD_GET)
+
+func _on_openrouter_auth_checked(result: int, code: int, headers: PackedStringArray, body: PackedByteArray, http: HTTPRequest, key: String, provider: String) -> void:
+	http.queue_free()
+	# Only fail if it's explicitly Unauthorized (401) or Forbidden (403)
+	if result == HTTPRequest.RESULT_SUCCESS and code != 401 and code != 403 and code != 0:
+		# Valid key, now fetch models
+		var url = "https://openrouter.ai/api/v1/models"
+		var http_models := HTTPRequest.new()
+		add_child(http_models)
+		http_models.request_completed.connect(_on_models_fetched.bind(http_models, key, provider))
+		http_models.request(url, ["Authorization: Bearer " + key], HTTPClient.METHOD_GET)
+		return
+	
+	if _provider_btn:
+		_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
+	_add_bubble(MessageBubble.Role.AI, "[img=16]res://addons/godot_maker/icons/ui/triangle-alert.svg[/img] OpenRouter API Key Validation Failed! Please check your key.")
+
+func _on_models_fetched(result: int, code: int, headers: PackedStringArray, body: PackedByteArray, http: HTTPRequest, key: String, provider: String) -> void:
+	http.queue_free()
+	if result == HTTPRequest.RESULT_SUCCESS and code == 200:
+		var json = JSON.parse_string(body.get_string_from_utf8())
+		if typeof(json) == TYPE_DICTIONARY and json.has("data"):
+			var models = json["data"]
+			_populate_models(models)
+			_handle_valid_key(key, provider)
+			return
+	if _provider_btn:
+		_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
+	_add_bubble(MessageBubble.Role.AI, "[img=16]res://addons/godot_maker/icons/ui/triangle-alert.svg[/img] API Key Validation Failed! Please check your key.")
+
+func _populate_models(models: Array) -> void:
+	if not _model_select_btn: return
+	_model_select_btn.clear()
+	_model_select_btn.show()
+	for i in range(models.size()):
+		var m = models[i]
+		var m_id = m.get("id", "")
+		_model_select_btn.add_item(m_id, i)
+		
+	var es := EditorInterface.get_editor_settings()
+	var saved_model_key = "ksanadock/model_" + _current_provider
+	var saved_model = es.get_setting(saved_model_key) if es.has_setting(saved_model_key) else ""
+	
+	_selected_model = ""
+	var match_idx = -1
+	for i in range(_model_select_btn.get_item_count()):
+		if _model_select_btn.get_item_text(i) == saved_model:
+			match_idx = i
+			break
 			
-			if _bridge and _bridge.has_method("restart_service"):
-				_bridge.restart_service()
+	if match_idx != -1:
+		_model_select_btn.select(match_idx)
+		_selected_model = saved_model
+	elif models.size() > 0:
+		_model_select_btn.select(0)
+		_selected_model = models[0].get("id", "")
+		
+	if not _model_select_btn.item_selected.is_connected(_on_model_selected):
+		_model_select_btn.item_selected.connect(_on_model_selected)
+
+func _on_model_selected(index: int) -> void:
+	_selected_model = _model_select_btn.get_item_text(index)
+	var es := EditorInterface.get_editor_settings()
+	es.set_setting("ksanadock/model_" + _current_provider, _selected_model)
+
+func _handle_valid_key(key: String, provider: String) -> void:
+	if _provider_btn:
+		_provider_btn.add_theme_color_override("font_color", Color(0.2, 0.9, 0.2)) # Green
+	if _auth:
+		_auth.set_api_key(key, provider)
+		
+		var es := EditorInterface.get_editor_settings()
+		es.set_setting("ksanadock/ai_provider", provider)
+		
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "API key validated and saved.")
+		_check_auth_status()
+		api_key_saved.emit()
+		
+		if _bridge and _bridge.has_method("restart_service"):
+			_bridge.restart_service()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -273,7 +463,8 @@ func _send_message() -> void:
 		set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
 
 	if _bridge and _bridge.has_method("send_chat_to_agent"):
-		_bridge.send_chat_to_agent(text, _on_bridge_response, false)
+		var api_key = _auth.get_api_key(_current_provider) if _auth else ""
+		_bridge.send_chat_to_agent(text, _on_bridge_response, false, _current_provider, _selected_model, api_key)
 	elif _ai_client:
 		_ai_client.send_message(_messages)
 	else:
@@ -379,7 +570,8 @@ func _send_direct_message(text: String, auto_run: bool = false) -> void:
 		set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
 
 	if _bridge and _bridge.has_method("send_chat_to_agent"):
-		_bridge.send_chat_to_agent(text, _on_bridge_response, auto_run)
+		var api_key = _auth.get_api_key(_current_provider) if _auth else ""
+		_bridge.send_chat_to_agent(text, _on_bridge_response, auto_run, _current_provider, _selected_model, api_key)
 
 
 func set_bridge(bridge: Node) -> void:

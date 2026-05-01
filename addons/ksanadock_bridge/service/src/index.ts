@@ -34,8 +34,11 @@ async function main() {
 
     // Register handlers for incoming requests from Godot
     client.onMethod('chat', async (params: any) => {
-        const { message, active_scene } = params;
+        const { message, active_scene, provider, model, api_key } = params;
         console.log('User Input:', message);
+        console.log(`Provider: ${provider}, Model: ${model}, Using specific API Key: ${!!api_key}`);
+        
+        agentLoop.updateConfig(provider, model, api_key);
         
         if (!loopInitialized) {
             await agentLoop.initializeSession(active_scene || "");

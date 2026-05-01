@@ -10,6 +10,7 @@ import type { BridgeClient } from '../client.js';
 dotenv.config();
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const SILICONFLOW_API_KEY = process.env.SILICONFLOW_API_KEY;
 const MODEL = process.env.MODEL || 'deepseek/deepseek-v4-flash';
 
 export class AgentLoop {
@@ -22,11 +23,28 @@ export class AgentLoop {
     private history: Message[] = [];
     private activeScene: string = "";
 
+    private currentProvider: string = 'openrouter';
+    private currentModel: string = process.env.MODEL || 'deepseek/deepseek-chat';
+    private currentApiKey: string = process.env.OPENROUTER_API_KEY || '';
+
     constructor(client: BridgeClient, toolRegistry: ToolRegistry, projectRoot: string) {
         this.client = client;
         this.toolRegistry = toolRegistry;
         this.projectRoot = projectRoot;
         this.sessionStore = new SessionStore(this.projectRoot);
+    }
+
+    public updateConfig(provider: string, model: string, apiKey: string) {
+        if (provider) {
+            this.currentProvider = provider;
+            process.env.LLM_PROVIDER = provider;
+        }
+        if (model) {
+            this.currentModel = model;
+            process.env.MODEL = model;
+        }
+        // Always update apiKey, even if empty, to allow fallback to env vars correctly
+        this.currentApiKey = apiKey || '';
     }
 
     private getSOP(): string {
@@ -162,12 +180,22 @@ Available Subagents:
 
                 this.compactHistory();
 
+                // FINAL DEFENSE: Clean any messages with empty roles before sending to API
+                this.history = this.history.filter(m => m); // Keep all messages
+                this.history.forEach(m => {
+                    const rawRole = (m as any).role;
+                    if (!rawRole || rawRole === "") {
+                        (m as any).role = "assistant"; 
+                    }
+                });
+
                 this.client.sendNotification('agent_event', { type: 'process_start', message: 'Agent is thinking...' });
 
-                const res = await this.callOpenRouter();
+                const res = await this.callLLM();
                 if (!res.choices || res.choices.length === 0) break;
                 
                 const message = res.choices[0].message;
+                if (!(message as any).role) (message as any).role = 'assistant'; // Force assistant role
                 if (!message.content) message.content = '';
 
                 // Handle tool calls
@@ -223,22 +251,30 @@ Available Subagents:
         }
     }
 
-    private async callOpenRouter(retries = 3) {
+    private async callLLM(retries = 3) {
         const tools = this.toolRegistry.getToolDefinitions();
+        
+        let url = 'https://openrouter.ai/api/v1/chat/completions';
+        let apiKey = this.currentApiKey || process.env.OPENROUTER_API_KEY;
+        
+        if (this.currentProvider === 'siliconflow') {
+            url = 'https://api.siliconflow.cn/v1/chat/completions';
+            apiKey = this.currentApiKey || process.env.SILICONFLOW_API_KEY;
+        }
         
         for (let i = 0; i < retries; i++) {
             try {
                 const res = await axios.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
+                    url,
                     {
-                        model: MODEL,
+                        model: this.currentModel,
                         messages: this.history,
                         tools: tools.length > 0 ? tools : undefined,
                         tool_choice: tools.length > 0 ? 'auto' : undefined
                     },
                     {
                         headers: {
-                            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                            'Authorization': `Bearer ${apiKey}`,
                             'HTTP-Referer': 'https://github.com/ksanadock/ksanadock',
                             'X-Title': 'KsanaDock Loop Engine',
                             'Content-Type': 'application/json'

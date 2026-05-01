@@ -28,6 +28,11 @@
 		"connect_ksanadock": "Connect GodotMaker",
 		"enter_api_key_title": "Set API Key",
 		"enter_api_key_placeholder": "Enter your OpenAI or compatible API Key here...",
-		"api_key_saved": "API Key saved and set to environment variable."
+		"api_key_saved": "API Key saved and set to environment variable.",
+		"settings_title": "Settings",
+		"api_key_management": "API Key Management",
+		"siliconflow_key": "SiliconFlow API Key",
+		"openrouter_key": "OpenRouter API Key",
+		"settings_save": "Save Settings"
 	}
 }
