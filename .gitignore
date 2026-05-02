@@ -12,3 +12,6 @@ addons/ksanadock_bridge/service/.env
 addons/ksanadock_bridge/service/node_modules/
 addons/ksanadock_bridge/service/dist/
 addons/ksanadock_bridge/service/service_logs.txt*
+
+# VS Code Extensions
+.vscode/changelists.json

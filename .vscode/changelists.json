@@ -2,20 +2,7 @@
   "changelists": [
     {
       "name": "Default",
-      "files": [
-        "addons/godot_maker/api/auth_client.gd",
-        "addons/ksanadock_bridge/ksanadock_bridge.gd",
-        "addons/ksanadock_bridge/service/src/core/loop.ts",
-        "addons/ksanadock_bridge/service/src/index.ts",
-        "addons/godot_maker/i18n/en.json",
-        "addons/godot_maker/i18n/zh.json",
-        "addons/godot_maker/ui/chat/chat.gd",
-        "addons/godot_maker/ui/chat/chat.tscn",
-        "addons/ksanadock_bridge/service/src/core/subagent.ts",
-        ".vscode/changelists.json",
-        "addons/godot_maker/godot_maker_plugin.gd",
-        "addons/godot_maker/ui/login/login_panel.gd"
-      ]
+      "files": []
     }
   ],
   "active": "Default"
