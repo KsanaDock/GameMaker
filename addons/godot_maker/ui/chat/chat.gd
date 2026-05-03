@@ -29,10 +29,13 @@ signal api_key_saved
 @onready var _auth_dialog: AcceptDialog = %AuthDialog
 @onready var _api_key_dialog: AcceptDialog = %APIKeyDialog
 @onready var _api_key_input: LineEdit = %APIKeyInput
+@onready var _api_key_eye_btn: Button = %APIKeyEyeBtn
 @onready var _settings_btn: Button = %SettingsBtn
 @onready var _settings_dialog: AcceptDialog = %SettingsDialog
 @onready var _sf_input: LineEdit = %SiliconFlowInput
 @onready var _or_input: LineEdit = %OpenRouterInput
+@onready var _sf_eye_btn: Button = %SFEyeBtn
+@onready var _or_eye_btn: Button = %OREyeBtn
 var _connect_ksanadock_btn: Button
 
 var _messages: Array[Dictionary] = []  # {role, content}
@@ -197,6 +200,13 @@ func _connect_signals() -> void:
 	_ctx_scene_btn.pressed.connect(_attach_scene_context)
 	_settings_btn.pressed.connect(_open_settings)
 	_settings_dialog.confirmed.connect(_on_settings_confirmed)
+	
+	if _api_key_eye_btn:
+		_api_key_eye_btn.pressed.connect(func(): _api_key_input.secret = not _api_key_input.secret)
+	if _sf_eye_btn:
+		_sf_eye_btn.pressed.connect(func(): _sf_input.secret = not _sf_input.secret)
+	if _or_eye_btn:
+		_or_eye_btn.pressed.connect(func(): _or_input.secret = not _or_input.secret)
 	
 	_grab_btn = Button.new()
 	_grab_btn.text = _tr("grab_output")

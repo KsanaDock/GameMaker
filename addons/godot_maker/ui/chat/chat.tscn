@@ -197,12 +197,22 @@ offset_top = 8.0
 offset_right = 392.0
 offset_bottom = 71.0
 
-[node name="APIKeyInput" type="LineEdit" parent="APIKeyDialog/VBox"]
+[node name="APIKeyInputBox" type="HBoxContainer" parent="APIKeyDialog/VBox"]
+layout_mode = 2
+
+[node name="APIKeyInput" type="LineEdit" parent="APIKeyDialog/VBox/APIKeyInputBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 placeholder_text = "Enter your API Key..."
 secret = true
+
+[node name="APIKeyEyeBtn" type="Button" parent="APIKeyDialog/VBox/APIKeyInputBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "👁"
+focus_mode = 0
 
 [node name="SettingsDialog" type="AcceptDialog" parent="."]
 unique_name_in_owner = true
@@ -237,20 +247,40 @@ theme_override_constants/v_separation = 10
 layout_mode = 2
 text = "SiliconFlow Key:"
 
-[node name="SiliconFlowInput" type="LineEdit" parent="SettingsDialog/VBox/Grid"]
+[node name="SFInputBox" type="HBoxContainer" parent="SettingsDialog/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SiliconFlowInput" type="LineEdit" parent="SettingsDialog/VBox/Grid/SFInputBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "sk-..."
 secret = true
 
+[node name="SFEyeBtn" type="Button" parent="SettingsDialog/VBox/Grid/SFInputBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "👁"
+focus_mode = 0
+
 [node name="ORLabel" type="Label" parent="SettingsDialog/VBox/Grid"]
 layout_mode = 2
 text = "OpenRouter Key:"
 
-[node name="OpenRouterInput" type="LineEdit" parent="SettingsDialog/VBox/Grid"]
+[node name="ORInputBox" type="HBoxContainer" parent="SettingsDialog/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OpenRouterInput" type="LineEdit" parent="SettingsDialog/VBox/Grid/ORInputBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "sk-or-v1-..."
 secret = true
+
+[node name="OREyeBtn" type="Button" parent="SettingsDialog/VBox/Grid/ORInputBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "👁"
+focus_mode = 0
