@@ -21,11 +21,20 @@ export function registerFileTools(registry: any, projectRoot: string) {
             }
             try {
                 const entries = await fs.readdir(fullPath, { withFileTypes: true, recursive: args.recursive || false });
-                return entries.map(e => ({
-                    name: e.name,
-                    path: path.relative(projectRoot, path.join((e as any).path || '', e.name)),
-                    isDirectory: e.isDirectory()
-                }));
+                return entries
+                    .filter(e => {
+                        const name = e.name;
+                        // Ignore noisy folders if we're listing the root or recursively
+                        if (name === 'addons' || name === '.godot' || name === '.git') {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .map(e => ({
+                        name: e.name,
+                        path: path.relative(projectRoot, path.join((e as any).path || '', e.name)),
+                        isDirectory: e.isDirectory()
+                    }));
             } catch (e: any) {
                 return { error: e.message };
             }
@@ -137,7 +146,7 @@ Usage:
                     const fullPath = path.join(dir, file.name);
                     
                     // Exclude heavy/noisy folders like .git, Godot `.godot` caching
-                    if (file.isDirectory() && !file.name.startsWith('.') && file.name !== 'node_modules') {
+                    if (file.isDirectory() && !file.name.startsWith('.') && file.name !== 'node_modules' && file.name !== 'addons') {
                         await walk(fullPath);
                     } else if (file.isFile()) {
                         if (extMatch && !file.name.endsWith(extMatch)) continue;

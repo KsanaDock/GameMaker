@@ -67,9 +67,6 @@ func _ready() -> void:
 	_create_auth_ui()
 	_connect_signals()
 	_check_auth_status()
-	
-	if _auth:
-		_load_persisted_state()
 
 
 func _load_persisted_state() -> void:
@@ -109,6 +106,7 @@ func initialize(auth: KAuthClient) -> void:
 	_ai_client.stream_error.connect(_on_stream_error)
 	
 	_check_auth_status()
+	_load_persisted_state()
 	
 	# 欢迎消息
 	if _messages.is_empty():
@@ -580,12 +578,25 @@ func set_bridge(bridge: Node) -> void:
 		_bridge.agent_event.connect(_on_agent_event)
 	if _bridge.has_signal("agent_reply") and not _bridge.agent_reply.is_connected(_on_agent_reply):
 		_bridge.agent_reply.connect(_on_agent_reply)
+	if _bridge.has_signal("agent_connected") and not _bridge.agent_connected.is_connected(_on_agent_connected):
+		_bridge.agent_connected.connect(_on_agent_connected)
 	if _bridge.has_method("get_agent_history"):
 		_bridge.get_agent_history(_render_history)
 
 
+func _on_agent_connected() -> void:
+	print("[GodotMaker] Agent connected signal received in Chat UI. Requesting history...")
+	if _bridge and _bridge.has_method("get_agent_history"):
+		_bridge.get_agent_history(_render_history)
+
+
 func _render_history(history: Variant) -> void:
+	print("[GodotMaker] History callback received. Type: ", typeof(history))
+	if history is Array:
+		print("[GodotMaker] History size: ", history.size())
+	
 	if not history is Array or history.is_empty():
+		print("[GodotMaker] History is empty or not an array. Returning.")
 		return
 	for c in _msg_list.get_children():
 		c.queue_free()

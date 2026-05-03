@@ -24,7 +24,7 @@ export function registerSymbolTools(registry: ToolRegistry, projectRoot: string)
                 for (const file of files) {
                     const fullPath = path.join(dir, file);
                     if (fs.statSync(fullPath).isDirectory()) {
-                        if (file !== 'node_modules' && !file.startsWith('.')) {
+                        if (file !== 'node_modules' && !file.startsWith('.') && file !== 'addons') {
                             walk(fullPath);
                         }
                     } else if (file.endsWith('.gd')) {

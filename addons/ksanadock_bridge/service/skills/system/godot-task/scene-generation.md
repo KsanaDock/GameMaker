@@ -71,16 +71,80 @@ set_owner_on_new_nodes(track_container, root)  # track_container itself has NO o
 
 ## Common Node Compositions
 
-**3D Physics Object:**
+**3D Physics Object (with Placeholder):**
 ```gdscript
 var body := RigidBody3D.new()
 var collision := CollisionShape3D.new()
 var mesh := MeshInstance3D.new()
 var shape := BoxShape3D.new()
+var box_mesh := BoxMesh.new()
+
 shape.size = Vector3(1, 1, 1)
+box_mesh.size = shape.size
 collision.shape = shape
+mesh.mesh = box_mesh
+
 body.add_child(collision)
 body.add_child(mesh)
+```
+
+## Visual Visibility & Placeholders (MANDATORY)
+
+Every game object intended to be visible MUST have a visual representation. **Do NOT generate "invisible" objects** (e.g., a PhysicsBody with only a CollisionShape, or a Sprite2D with no texture). 
+
+**NO EMPTY ASSETS RULE**: 
+1. If you use a `Sprite2D` or `AnimatedSprite2D`, you MUST assign a valid `Texture` or `SpriteFrames`. 
+2. If the asset is not yet available, you MUST use a `ColorRect` (2D) or `MeshInstance3D` (3D) as a visible placeholder. 
+3. NEVER leave a visual node in a scene with its resource properties (texture, mesh, frames) set to null.
+4. For `TileMap` nodes, you MUST assign a `TileSet` or replace it with a `ColorRect` ground until a tileset is ready.
+
+### 2D Placeholders
+
+For 2D games, use `ColorRect` or `Polygon2D`.
+
+**Simple Rectangle (e.g., walls, platforms):**
+```gdscript
+var visual := ColorRect.new()
+visual.color = Color.DARK_GRAY
+visual.size = Vector2(64, 64)
+visual.position = -visual.size / 2 # Center it
+node.add_child(visual)
+```
+
+**Custom Shape (e.g., Tanks, Characters):**
+```gdscript
+var visual := Polygon2D.new()
+visual.polygon = PackedVector2Array([
+    Vector2(-20, -20), Vector2(20, -20), 
+    Vector2(20, 20), Vector2(-20, 20)
+])
+visual.color = Color.GREEN
+node.add_child(visual)
+```
+
+### 3D Placeholders
+
+For 3D games, use `MeshInstance3D` with primitive meshes.
+
+**Primitive Mesh (Box, Sphere, Capsule):**
+```gdscript
+var mesh_instance := MeshInstance3D.new()
+var box_mesh := BoxMesh.new()
+box_mesh.size = Vector3(1, 1, 1)
+mesh_instance.mesh = box_mesh
+
+var mat := StandardMaterial3D.new()
+mat.albedo_color = Color.RED
+mesh_instance.set_surface_override_material(0, mat)
+node.add_child(mesh_instance)
+```
+
+**Debug Text (Labels):**
+```gdscript
+var label := Label3D.new() # Or Label for 2D
+label.text = "Player"
+label.position.y = 2.0
+node.add_child(label)
 ```
 
 **Camera Rig:**
@@ -151,6 +215,60 @@ mesh_instance.set_surface_override_material(0, mat)
 **Texture UV tiling:** For large surfaces, scale UVs to avoid stretched textures:
 ```gdscript
 mat.uv1_scale = Vector3(10, 10, 1)  # Tile every 2m on a 20m floor
+```
+
+**Spritesheets & Animation Analysis (2D):**
+When discovering assets, analyze filenames to determine slicing. For example, `player_run_strip4.png` implies a horizontal strip of 4 frames. If an image is just a regular icon, use it directly as a `Sprite2D` texture.
+
+*Approach 1: Sprite2D + AnimationPlayer (Recommended for complex logic)*
+```gdscript
+var sprite := Sprite2D.new()
+sprite.name = "Sprite2D"
+sprite.texture = load("res://asset/player_run_strip4.png")
+sprite.hframes = 4 # Derived from "_strip4"
+
+var anim_player := AnimationPlayer.new()
+anim_player.name = "AnimationPlayer"
+var lib := AnimationLibrary.new()
+var anim := Animation.new()
+anim.length = 0.4
+anim.loop_mode = Animation.LOOP_LINEAR
+
+# Add frame track
+var track_idx = anim.add_track(Animation.TYPE_VALUE)
+anim.track_set_path(track_idx, NodePath("Sprite2D:frame"))
+for i in range(4):
+    anim.track_insert_key(track_idx, i * 0.1, i)
+
+lib.add_animation("run", anim)
+anim_player.add_animation_library("", lib)
+anim_player.autoplay = "run"
+
+node.add_child(sprite)
+node.add_child(anim_player)
+```
+
+*Approach 2: AnimatedSprite2D + AtlasTexture (Alternative)*
+```gdscript
+var anim_sprite := AnimatedSprite2D.new()
+anim_sprite.name = "AnimatedSprite2D"
+var frames := SpriteFrames.new()
+frames.add_animation("run")
+frames.set_animation_speed("run", 10)
+
+var tex = load("res://asset/player_run_strip4.png")
+# Note: You MUST know the width/height to do this correctly in headless mode. 
+# If dimensions are unknown, prefer Approach 1.
+# Assuming we know each frame is 32x32:
+for i in range(4):
+    var atlas := AtlasTexture.new()
+    atlas.atlas = tex
+    atlas.region = Rect2(i * 32, 0, 32, 32)
+    frames.add_frame("run", atlas)
+
+anim_sprite.sprite_frames = frames
+anim_sprite.autoplay = "run"
+node.add_child(anim_sprite)
 ```
 
 ## Child Scene Instancing

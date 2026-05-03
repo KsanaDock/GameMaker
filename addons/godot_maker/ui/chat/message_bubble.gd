@@ -116,7 +116,7 @@ func _build(text: String) -> void:
 	_content_label.bbcode_enabled = true
 	_content_label.fit_content = true
 	_content_label.scroll_active = false
-	_content_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_content_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	if _role == Role.TOOL_EXEC:

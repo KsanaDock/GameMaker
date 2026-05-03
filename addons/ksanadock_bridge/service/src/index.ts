@@ -53,6 +53,7 @@ async function main() {
 
     client.onMethod('get_history', async (params: any) => {
         const { active_scene } = params;
+        console.log('[Agent Service] Received get_history request for scene:', active_scene);
         if (!loopInitialized) {
             await agentLoop.initializeSession(active_scene || "");
             loopInitialized = true;
