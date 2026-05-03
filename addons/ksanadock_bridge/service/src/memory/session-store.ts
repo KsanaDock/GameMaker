@@ -10,15 +10,27 @@ export class SessionStore {
 
     async saveSession(sessionId: string, history: any[]) {
         try {
+            if (!this.sessionPath) return;
             await fs.mkdir(this.sessionPath, { recursive: true });
+            
             const filePath = path.join(this.sessionPath, `${sessionId}.json`);
+            
+            // Clean history to ensure it's JSON serializable (strip any unexpected objects)
+            const cleanHistory = history.map(m => ({
+                role: m.role,
+                content: m.content || "",
+                tool_calls: m.tool_calls,
+                tool_call_id: m.tool_call_id,
+                name: m.name
+            }));
+
             await fs.writeFile(filePath, JSON.stringify({
                 sessionId,
                 updatedAt: new Date().toISOString(),
-                history
-            }, null, 2));
+                history: cleanHistory
+            }));
         } catch (e) {
-            console.error('Failed to save session:', e);
+            // Silently fail as requested, but ensure the process doesn't crash
         }
     }
 

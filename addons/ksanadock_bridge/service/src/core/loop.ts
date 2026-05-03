@@ -75,38 +75,62 @@ Available Subagents:
     }
 
     public async initializeSession(activeScene: string) {
+        console.log(`[AgentLoop] Initializing session for scene: ${activeScene}`);
         this.activeScene = activeScene;
-        const projectContext = await getHierarchicalContext(this.projectRoot, activeScene);
-        const autoMemory = await buildMemoryPrompt(this.projectRoot);
         
-        let symbolMap = "Symbol scan pending...";
-        try {
-            symbolMap = await this.toolRegistry.execute('grep_symbols', {});
-        } catch(e) {}
+        // Non-blocking background tasks
+        const projectContextPromise = getHierarchicalContext(this.projectRoot, activeScene);
+        const autoMemoryPromise = buildMemoryPrompt(this.projectRoot);
         
         const systemPrompt: Message = { 
             role: 'system', 
-            content: `${this.getSOP()}\n\n${autoMemory}\n\nPROJECT_SYMBOL_MAP (LSP-LITE):\n${symbolMap}\n\nPROJECT_SPECIFIC_GUIDANCE:\n${projectContext || "None"}\n\nACTIVE_SCENE: ${activeScene || "None"}`
+            content: `${this.getSOP()}\n\n(Context pending...)\n\nACTIVE_SCENE: ${activeScene || "None"}`
         };
 
         try {
             // Restore session if available
+            console.log(`[AgentLoop] Loading session memory...`);
             const restored = await this.sessionStore.loadSession('current');
             if (restored && Array.isArray(restored) && restored.length > 0) {
-                // Keep the NEW system prompt as the core context, but append history
                 const validHistory = restored
                     .filter(m => m && m.role && m.role !== 'system')
                     .map(m => ({
                         ...m,
-                        role: m.role || 'assistant' // Fallback just in case
+                        role: m.role || 'assistant'
                     }));
                 this.history = [systemPrompt, ...validHistory];
-                console.log(`[AgentLoop] Restored ${restored.length} messages from session.`);
+                console.log(`[AgentLoop] Restored ${validHistory.length} messages from history.`);
             } else {
                 this.history = [systemPrompt];
             }
         } catch(e) {
+            console.warn(`[AgentLoop] Session restoration failed: ${e}`);
             this.history = [systemPrompt];
+        }
+
+        // Finalize system prompt in background
+        Promise.all([projectContextPromise, autoMemoryPromise]).then(async ([context, memory]) => {
+            let symbolMap = "Symbol scan pending...";
+            try {
+                // Background scan
+                symbolMap = await this.toolRegistry.execute('grep_symbols', {});
+            } catch(e) {}
+
+            // Directly update the object we created above - this is safer than indexing the array
+            systemPrompt.content = `${this.getSOP()}\n\n${memory}\n\nPROJECT_SYMBOL_MAP (LSP-LITE):\n${symbolMap}\n\nPROJECT_SPECIFIC_GUIDANCE:\n${context || "None"}\n\nACTIVE_SCENE: ${this.activeScene || "None"}`;
+            console.log(`[AgentLoop] Background context initialization complete.`);
+        });
+        
+        await this.saveCurrentSession();
+    }
+
+    private async saveCurrentSession() {
+        try {
+            // Filter system prompt out of persistent storage to keep it fresh
+            const toSave = this.history.filter(m => m.role !== 'system');
+            await this.sessionStore.saveSession('current', toSave);
+        } catch (e) {
+            // Silent fail as requested, but we should ensure this.history is clean
         }
     }
 
@@ -117,6 +141,7 @@ Available Subagents:
 
     public pushMessage(msg: Message) {
         this.messageQueue.push(msg);
+        // Pre-emptive save of the incoming message if added to history directly later
         this.wakeup();
     }
 
@@ -179,7 +204,10 @@ Available Subagents:
                 // Drain queue into history
                 while (this.messageQueue.length > 0) {
                     const newMsg = this.messageQueue.shift();
-                    if (newMsg) this.history.push(newMsg);
+                    if (newMsg) {
+                        this.history.push(newMsg);
+                        await this.saveCurrentSession();
+                    }
                 }
 
                 // If the last message was assistant text (and not tool calls), we are idle waiting for user
@@ -211,6 +239,7 @@ Available Subagents:
                 // Handle tool calls
                 if (message.tool_calls && message.tool_calls.length > 0) {
                     this.history.push(message);
+                    await this.saveCurrentSession();
                     
                     // If the model provided reasoning alongside tool calls, echo it back!
                     if (message.content) {
@@ -240,11 +269,13 @@ Available Subagents:
                                 content: `Error executing ${name}: ${err.message}`
                             });
                         }
+                        await this.saveCurrentSession();
                     }
                     // Loop continues automatically because history now ends with role: 'tool'
                 } else if (message.content) {
                     // Final text response
                     this.history.push(message);
+                    await this.saveCurrentSession();
                     this.client.sendNotification('agent_reply', { text: message.content });
                     // Loop will break on next iteration because last message is assistant text
                 } else {
@@ -255,7 +286,7 @@ Available Subagents:
             console.error("[AgentLoop Error]", err);
             this.client.sendNotification('agent_event', { type: 'error', message: err.message });
         } finally {
-            await this.sessionStore.saveSession('current', this.history as any);
+            await this.saveCurrentSession();
             this.client.sendNotification('agent_event', { type: 'process_end', message: 'Agent idle.' });
             this.isRunning = false;
         }

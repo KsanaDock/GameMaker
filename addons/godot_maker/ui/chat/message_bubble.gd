@@ -118,6 +118,8 @@ func _build(text: String) -> void:
 	_content_label.scroll_active = false
 	_content_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# 关键：设置极小的最小宽度，允许父容器将其压缩，从而强制触发换行逻辑
+	_content_label.custom_minimum_size.x = 1
 	
 	if _role == Role.TOOL_EXEC:
 		_content_label.add_theme_color_override("default_color", Color(0.6, 0.6, 0.6))

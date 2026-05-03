@@ -545,9 +545,14 @@ func _on_bridge_response(result: Dictionary) -> void:
 	if result.has("error"):
 		_on_stream_error(str(result.error))
 		return
+	
 	var type = result.get("type", "text")
 	if type == "plan":
 		_add_plan_bubble(result.get("data", {}), result.get("tool_call_id", ""))
+	else:
+		# Text task acknowledgment received, but we only stop streaming when process_end or reply arrives
+		# However, if the agent doesn't even start processing, we should unlock the UI
+		pass
 
 
 func _add_plan_bubble(data: Dictionary, tool_call_id: String) -> void:
@@ -601,17 +606,18 @@ func _on_agent_connected() -> void:
 
 
 func _render_history(history: Variant) -> void:
-	print("[GodotMaker] History callback received. Type: ", typeof(history))
-	if history is Array:
-		print("[GodotMaker] History size: ", history.size())
-	
-	if not history is Array or history.is_empty():
-		print("[GodotMaker] History is empty or not an array. Returning.")
+	if not history is Array:
 		return
+		
+	if history.is_empty():
+		return
+		
 	for c in _msg_list.get_children():
 		c.queue_free()
 	_messages.clear()
+	
 	for msg in history:
+		if not msg is Dictionary: continue
 		var role_str = msg.get("role", "")
 		var content = msg.get("content", "")
 		var role = MessageBubble.Role.AI
@@ -619,8 +625,10 @@ func _render_history(history: Variant) -> void:
 			role = MessageBubble.Role.USER
 		elif role_str == "tool":
 			role = MessageBubble.Role.TOOL_EXEC
-		_add_bubble(role, content)
-		_messages.append({"role": role_str, "content": content})
+		
+		if content != "" or msg.has("tool_calls"):
+			_add_bubble(role, content)
+			_messages.append({"role": role_str, "content": content})
 	_scroll_to_bottom()
 
 

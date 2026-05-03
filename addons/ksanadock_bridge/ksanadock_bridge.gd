@@ -183,9 +183,17 @@ func _handle_chat_proxy(_client: WebSocketPeer, _id, _params: Dictionary) -> voi
 
 ## UI API
 func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = false, provider: String = "", model: String = "", api_key: String = "") -> void:
+	# If agent isn't connected yet, wait up to 15 seconds for it to come online
 	if _clients.is_empty():
-		callback.call({"error": "No agent connected"})
-		return
+		var waited := 0.0
+		var interval := 0.5
+		var max_wait := 15.0
+		while _clients.is_empty() and waited < max_wait:
+			await get_tree().create_timer(interval).timeout
+			waited += interval
+		if _clients.is_empty():
+			callback.call({"error": "No agent connected"})
+			return
 	
 	var req_id = str(Time.get_ticks_msec())
 	_pending_requests[req_id] = callback
@@ -212,6 +220,7 @@ func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = fa
 
 func get_agent_history(callback: Callable) -> void:
 	if _clients.is_empty():
+		callback.call([]) # Return empty list if no agent
 		return
 	
 	var req_id = "hist_" + str(Time.get_ticks_msec())
@@ -326,8 +335,14 @@ func _poll_logs() -> void:
 func _stop_agent_service() -> void:
 	if _agent_pid != -1:
 		print("[GodotMaker Bridge] Stopping Agent service (PID: ", _agent_pid, ")")
-		OS.kill(_agent_pid)
+		# On Windows, OS.kill() only kills the cmd.exe shell, not the node.exe child.
+		# Use taskkill /T /F to kill the entire process tree.
+		OS.create_process("taskkill", ["/T", "/F", "/PID", str(_agent_pid)], false)
 		_agent_pid = -1
+	# Clear stale client connections so the new agent can connect cleanly
+	for client in _clients:
+		client.close()
+	_clients.clear()
 
 func _handle_rpc_result(id: Variant, result: Variant) -> void:
 	var id_str = str(id)
