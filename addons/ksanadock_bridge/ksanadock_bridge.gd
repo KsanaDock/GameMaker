@@ -9,6 +9,7 @@ extends EditorPlugin
 signal agent_event(params: Dictionary)
 signal agent_reply(params: Dictionary)
 signal agent_connected()
+signal file_created(path: String)
 
 const PORT = 9090
 
@@ -180,6 +181,10 @@ func _handle_chat_proxy(_client: WebSocketPeer, _id, _params: Dictionary) -> voi
 	# We need to distinguish between Agent->Godot and UI->Godot.
 	# Usually UI will call a helper function on this script instead of sending a JSON packet to itself.
 	pass
+
+func is_agent_connected() -> bool:
+	return not _clients.is_empty()
+
 
 ## UI API
 func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = false, provider: String = "", model: String = "", api_key: String = "") -> void:
@@ -354,7 +359,9 @@ func _handle_rpc_result(id: Variant, result: Variant) -> void:
 		cb.call(result)
 		_pending_requests.erase(id_str)
 	else:
-		printerr("[GodotMaker Bridge] Warning: Received result for unknown ID: ", id_str, ". Pending: ", _pending_requests.keys())
+		# 忽略已知的延迟历史记录请求，其他的记录为警告而非错误
+		if not id_str.begins_with("hist_"):
+			push_warning("[GodotMaker Bridge] Received result for unknown ID: " + id_str)
 
 func _handle_rpc_error(id: Variant, error: Variant) -> void:
 	var id_str = str(id)
@@ -521,6 +528,7 @@ func _handle_save_scene(client: WebSocketPeer, id, params: Dictionary) -> void:
 		return
 		
 	EditorInterface.get_resource_filesystem().scan()
+	file_created.emit(path)
 	_send_result(client, id, {"path": path})
 
 func _handle_create_new_scene(client: WebSocketPeer, id, params: Dictionary) -> void:
@@ -552,6 +560,7 @@ func _handle_create_new_scene(client: WebSocketPeer, id, params: Dictionary) -> 
 	EditorInterface.get_resource_filesystem().scan()
 	EditorInterface.open_scene_from_path(path)
 	
+	file_created.emit(path)
 	_send_result(client, id, {"root": node.name, "path": path})
 
 func _handle_instantiate_scene(client: WebSocketPeer, id, params: Dictionary) -> void:

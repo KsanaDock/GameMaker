@@ -1,18 +1,163 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene format=3 uid="uid://bt5x607hqvv"]
 
-[ext_resource type="Script" path="res://addons/godot_maker/ui/chat/chat.gd" id="1"]
-[ext_resource type="Texture2D" path="res://addons/godot_maker/icons/ui/film.svg" id="2"]
-[ext_resource type="Texture2D" path="res://addons/godot_maker/icons/ui/x.svg" id="3"]
-[ext_resource type="Texture2D" path="res://addons/godot_maker/icons/ui/clipboard.svg" id="4"]
-[ext_resource type="Texture2D" path="res://addons/godot_maker/icons/ui/send.svg" id="5"]
+[ext_resource type="Script" uid="uid://div2afh2v28x5" path="res://addons/godot_maker/ui/chat/chat.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://bakax6nr10cc4" path="res://addons/godot_maker/icons/ui/x.svg" id="3"]
+[ext_resource type="Texture2D" uid="uid://dd15hxs1jriwk" path="res://addons/godot_maker/icons/ui/clipboard.svg" id="4"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Header"]
-bg_color = Color(0.067, 0.067, 0.067, 1)
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.118, 0.118, 0.118, 1)
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.04)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vh6ig"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wu6ng"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l2ofy"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0.06)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_80nyu"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3bsu"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ysvs0"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8tn6s"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0.06)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_r6c6c"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_InputBG"]
-bg_color = Color(0.067, 0.067, 0.067, 1)
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.165, 0.165, 0.165, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
 
-[node name="Chat" type="VBoxContainer"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_f7yl8"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j4snm"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jr2b1"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0.06)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_r466c"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o1st0"]
+content_margin_left = 4.0
+content_margin_top = 8.0
+content_margin_right = 4.0
+content_margin_bottom = 8.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vjeoj"]
+content_margin_left = 4.0
+content_margin_top = 8.0
+content_margin_right = 4.0
+content_margin_bottom = 8.0
+bg_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ltlm2"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 50
+corner_radius_top_right = 50
+corner_radius_bottom_right = 50
+corner_radius_bottom_left = 50
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0aufy"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.8, 0.8, 0.8, 1)
+corner_radius_top_left = 50
+corner_radius_top_right = 50
+corner_radius_bottom_right = 50
+corner_radius_bottom_left = 50
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6pkk7"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.8784314, 0.8784314, 0.8784314, 1)
+corner_radius_top_left = 50
+corner_radius_top_right = 50
+corner_radius_bottom_right = 50
+corner_radius_bottom_left = 50
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_68pxs"]
+
+[node name="Chat" type="VBoxContainer" unique_id=308225465]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -21,266 +166,334 @@ grow_vertical = 2
 theme_override_constants/separation = 0
 script = ExtResource("1")
 
-[node name="HeaderBG" type="PanelContainer" parent="."]
+[node name="HeaderBG" type="PanelContainer" parent="." unique_id=381236196]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_Header")
 
-[node name="Margin" type="MarginContainer" parent="HeaderBG"]
+[node name="Margin" type="MarginContainer" parent="HeaderBG" unique_id=503698131]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 4
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 6
 
-[node name="Header" type="HBoxContainer" parent="HeaderBG/Margin"]
+[node name="Header" type="HBoxContainer" parent="HeaderBG/Margin" unique_id=1079233137]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 36)
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
 
-[node name="Dot" type="Label" parent="HeaderBG/Margin/Header"]
+[node name="Dot" type="Label" parent="HeaderBG/Margin/Header" unique_id=2042071822]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.063, 0.725, 0.506, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 8
 text = "●"
 
-[node name="Title" type="Label" parent="HeaderBG/Margin/Header"]
+[node name="Title" type="Label" parent="HeaderBG/Margin/Header" unique_id=532935453]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
 theme_override_font_sizes/font_size = 13
 text = "GodotMaker AI"
 
-
-
-[node name="ClearBtn" type="Button" parent="HeaderBG/Margin/Header"]
+[node name="ClearBtn" type="Button" parent="HeaderBG/Margin/Header" unique_id=1432409605]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 tooltip_text = "Clear conversation"
 theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_vh6ig")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_wu6ng")
+theme_override_styles/hover = SubResource("StyleBoxFlat_l2ofy")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_80nyu")
 icon = ExtResource("3")
 icon_alignment = 1
 
-[node name="SettingsBtn" type="Button" parent="HeaderBG/Margin/Header"]
+[node name="SettingsBtn" type="Button" parent="HeaderBG/Margin/Header" unique_id=1588968483]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(40, 28)
 layout_mode = 2
 tooltip_text = "Settings"
+theme_override_colors/font_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
+theme_override_colors/font_hover_color = Color(0.9098039, 0.9098039, 0.9098039, 1)
 theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_w3bsu")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ysvs0")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8tn6s")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_r6c6c")
 text = "设置"
 
-[node name="Scroll" type="ScrollContainer" parent="."]
+[node name="Scroll" type="ScrollContainer" parent="." unique_id=1707535417]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+scroll_vertical = 14595
 horizontal_scroll_mode = 0
 
-[node name="TopPad" type="MarginContainer" parent="Scroll"]
+[node name="TopPad" type="MarginContainer" parent="Scroll" unique_id=1950153992]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
 
-[node name="MsgList" type="VBoxContainer" parent="Scroll/TopPad"]
+[node name="MsgList" type="VBoxContainer" parent="Scroll/TopPad" unique_id=1578167451]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 16
 
-[node name="StartOverlay" type="CenterContainer" parent="."]
+[node name="StartOverlay" type="CenterContainer" parent="." unique_id=1165676060]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StartBtn" type="Button" parent="StartOverlay"]
+[node name="StartBtn" type="Button" parent="StartOverlay" unique_id=1438463807]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Start Creating"
+text = "开始创作"
 
-[node name="InputBG" type="PanelContainer" parent="."]
+[node name="StatusBar" type="MarginContainer" parent="." unique_id=361759137]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 4
+
+[node name="HBox" type="HBoxContainer" parent="StatusBar" unique_id=2099578218]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SpinnerLabel" type="Label" parent="StatusBar/HBox" unique_id=2105244855]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.42, 0.42, 0.42, 1)
+theme_override_font_sizes/font_size = 14
+text = "⠏"
+
+[node name="StatusLabel" type="Label" parent="StatusBar/HBox" unique_id=710321940]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+theme_override_font_sizes/font_size = 12
+text = "Thinking..."
+
+[node name="InputBG" type="PanelContainer" parent="." unique_id=1476054555]
+visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_InputBG")
 
-[node name="Margin" type="MarginContainer" parent="InputBG"]
+[node name="OuterMargin" type="MarginContainer" parent="InputBG" unique_id=2097394313]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 6
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 8
 
-[node name="VBox" type="VBoxContainer" parent="InputBG/Margin"]
+[node name="Margin" type="MarginContainer" parent="InputBG/OuterMargin" unique_id=1657226880]
+layout_mode = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="VBox" type="VBoxContainer" parent="InputBG/OuterMargin/Margin" unique_id=695468839]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="CtxBar" type="HBoxContainer" parent="InputBG/Margin/VBox"]
+[node name="CtxBar" type="HBoxContainer" parent="InputBG/OuterMargin/Margin/VBox" unique_id=472150903]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="CtxSceneBtn" type="Button" parent="InputBG/Margin/VBox/CtxBar"]
+[node name="CtxSceneBtn" type="Button" parent="InputBG/OuterMargin/Margin/VBox/CtxBar" unique_id=1438998220]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Attach current scene tree info"
+theme_override_colors/font_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
+theme_override_colors/font_hover_color = Color(0.9098039, 0.9098039, 0.9098039, 1)
 theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_f7yl8")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_j4snm")
+theme_override_styles/hover = SubResource("StyleBoxFlat_jr2b1")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_r466c")
 text = " 场景上下文"
 icon = ExtResource("4")
 
-[node name="RefScroll" type="ScrollContainer" parent="InputBG/Margin/VBox/CtxBar"]
+[node name="RefScroll" type="ScrollContainer" parent="InputBG/OuterMargin/Margin/VBox/CtxBar" unique_id=259030531]
 layout_mode = 2
 size_flags_horizontal = 3
 vertical_scroll_mode = 0
 
-[node name="RefList" type="HBoxContainer" parent="InputBG/Margin/VBox/CtxBar/RefScroll"]
+[node name="RefList" type="HBoxContainer" parent="InputBG/OuterMargin/Margin/VBox/CtxBar/RefScroll" unique_id=380432001]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="InputRow" type="HBoxContainer" parent="InputBG/Margin/VBox"]
+[node name="InputRow" type="HBoxContainer" parent="InputBG/OuterMargin/Margin/VBox" unique_id=746320375]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 
-[node name="InputField" type="TextEdit" parent="InputBG/Margin/VBox/InputRow"]
+[node name="InputField" type="TextEdit" parent="InputBG/OuterMargin/Margin/VBox/InputRow" unique_id=1073479830]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9098039, 0.9098039, 0.9098039, 1)
+theme_override_colors/font_placeholder_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_o1st0")
+theme_override_styles/focus = SubResource("StyleBoxFlat_vjeoj")
 placeholder_text = "输入消息... (Enter 发送, Shift+Enter 换行)"
 wrap_mode = 1
 scroll_fit_content_height = true
 
-[node name="SendBtn" type="Button" parent="InputBG/Margin/VBox/InputRow"]
+[node name="SendBtn" type="Button" parent="InputBG/OuterMargin/Margin/VBox/InputRow" unique_id=55149583]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-icon = ExtResource("5")
-icon_alignment = 1
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(0.2, 0.2, 0.2, 1)
+theme_override_colors/font_hover_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_ltlm2")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_0aufy")
+theme_override_styles/hover = SubResource("StyleBoxFlat_6pkk7")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_68pxs")
+text = "↑"
 
-[node name="ProviderBar" type="HBoxContainer" parent="InputBG/Margin/VBox"]
+[node name="ProviderBar" type="HBoxContainer" parent="InputBG/OuterMargin/Margin/VBox" unique_id=406904118]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
-[node name="ProviderBtn" type="OptionButton" parent="InputBG/Margin/VBox/ProviderBar"]
+[node name="ProviderBtn" type="OptionButton" parent="InputBG/OuterMargin/Margin/VBox/ProviderBar" unique_id=1395037752]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_colors/font_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
+theme_override_colors/font_hover_color = Color(0.9098039, 0.9098039, 0.9098039, 1)
 theme_override_font_sizes/font_size = 11
+selected = 0
+item_count = 3
+popup/item_0/text = "选择大模型代理商..."
+popup/item_0/id = 0
+popup/item_0/disabled = true
+popup/item_1/text = "硅基流动 (SiliconFlow)"
+popup/item_1/id = 1
+popup/item_2/text = "OpenRouter"
+popup/item_2/id = 2
 
-[node name="ModelSelectBtn" type="OptionButton" parent="InputBG/Margin/VBox/ProviderBar"]
+[node name="ModelSelectBtn" type="OptionButton" parent="InputBG/OuterMargin/Margin/VBox/ProviderBar" unique_id=1695628748]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
 theme_override_font_sizes/font_size = 11
-visible = false
 
-[node name="AuthDialog" type="AcceptDialog" parent="."]
+[node name="AuthDialog" type="AcceptDialog" parent="." unique_id=170578088]
 unique_name_in_owner = true
-title = "Choose Auth Method"
+title = "选择接入方式"
 size = Vector2i(300, 100)
-exclusive = false
-transient = true
 
-[node name="APIKeyDialog" type="AcceptDialog" parent="."]
+[node name="APIKeyDialog" type="AcceptDialog" parent="." unique_id=1225970796]
 unique_name_in_owner = true
-title = "Enter API Key"
+title = "设置 API Key"
 size = Vector2i(400, 120)
-exclusive = false
-transient = true
 
-[node name="VBox" type="VBoxContainer" parent="APIKeyDialog"]
+[node name="VBox" type="VBoxContainer" parent="APIKeyDialog" unique_id=101212208]
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 392.0
 offset_bottom = 71.0
 
-[node name="APIKeyInputBox" type="HBoxContainer" parent="APIKeyDialog/VBox"]
+[node name="APIKeyInputBox" type="HBoxContainer" parent="APIKeyDialog/VBox" unique_id=1191028306]
 layout_mode = 2
 
-[node name="APIKeyInput" type="LineEdit" parent="APIKeyDialog/VBox/APIKeyInputBox"]
+[node name="APIKeyInput" type="LineEdit" parent="APIKeyDialog/VBox/APIKeyInputBox" unique_id=856371429]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "Enter your API Key..."
+placeholder_text = "在此输入您的 OpenAI 或兼容 API Key..."
 secret = true
 
-[node name="APIKeyEyeBtn" type="Button" parent="APIKeyDialog/VBox/APIKeyInputBox"]
+[node name="APIKeyEyeBtn" type="Button" parent="APIKeyDialog/VBox/APIKeyInputBox" unique_id=1761284979]
 unique_name_in_owner = true
 layout_mode = 2
-text = "👁"
 focus_mode = 0
+text = "👁"
 
-[node name="SettingsDialog" type="AcceptDialog" parent="."]
+[node name="SettingsDialog" type="AcceptDialog" parent="." unique_id=813043164]
 unique_name_in_owner = true
-title = "Settings"
+title = "设置"
 size = Vector2i(450, 240)
 exclusive = false
-transient = true
 
-[node name="VBox" type="VBoxContainer" parent="SettingsDialog"]
+[node name="VBox" type="VBoxContainer" parent="SettingsDialog" unique_id=1938930861]
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 442.0
 offset_bottom = 191.0
 theme_override_constants/separation = 10
 
-[node name="Label" type="Label" parent="SettingsDialog/VBox"]
+[node name="Label" type="Label" parent="SettingsDialog/VBox" unique_id=1869432312]
 layout_mode = 2
 text = "API Key Management"
 horizontal_alignment = 1
 
-[node name="HSeparator" type="HSeparator" parent="SettingsDialog/VBox"]
+[node name="HSeparator" type="HSeparator" parent="SettingsDialog/VBox" unique_id=418703103]
 layout_mode = 2
 
-[node name="Grid" type="GridContainer" parent="SettingsDialog/VBox"]
+[node name="Grid" type="GridContainer" parent="SettingsDialog/VBox" unique_id=1047209383]
 layout_mode = 2
 size_flags_vertical = 3
-columns = 2
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
+columns = 2
 
-[node name="SFLabel" type="Label" parent="SettingsDialog/VBox/Grid"]
+[node name="SFLabel" type="Label" parent="SettingsDialog/VBox/Grid" unique_id=231607343]
 layout_mode = 2
 text = "SiliconFlow Key:"
 
-[node name="SFInputBox" type="HBoxContainer" parent="SettingsDialog/VBox/Grid"]
+[node name="SFInputBox" type="HBoxContainer" parent="SettingsDialog/VBox/Grid" unique_id=1529768898]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SiliconFlowInput" type="LineEdit" parent="SettingsDialog/VBox/Grid/SFInputBox"]
+[node name="SiliconFlowInput" type="LineEdit" parent="SettingsDialog/VBox/Grid/SFInputBox" unique_id=116799533]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "sk-..."
 secret = true
 
-[node name="SFEyeBtn" type="Button" parent="SettingsDialog/VBox/Grid/SFInputBox"]
+[node name="SFEyeBtn" type="Button" parent="SettingsDialog/VBox/Grid/SFInputBox" unique_id=1942925613]
 unique_name_in_owner = true
 layout_mode = 2
-text = "👁"
 focus_mode = 0
+text = "👁"
 
-[node name="ORLabel" type="Label" parent="SettingsDialog/VBox/Grid"]
+[node name="ORLabel" type="Label" parent="SettingsDialog/VBox/Grid" unique_id=811169068]
 layout_mode = 2
 text = "OpenRouter Key:"
 
-[node name="ORInputBox" type="HBoxContainer" parent="SettingsDialog/VBox/Grid"]
+[node name="ORInputBox" type="HBoxContainer" parent="SettingsDialog/VBox/Grid" unique_id=1098411675]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="OpenRouterInput" type="LineEdit" parent="SettingsDialog/VBox/Grid/ORInputBox"]
+[node name="OpenRouterInput" type="LineEdit" parent="SettingsDialog/VBox/Grid/ORInputBox" unique_id=717457928]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "sk-or-v1-..."
 secret = true
 
-[node name="OREyeBtn" type="Button" parent="SettingsDialog/VBox/Grid/ORInputBox"]
+[node name="OREyeBtn" type="Button" parent="SettingsDialog/VBox/Grid/ORInputBox" unique_id=752470976]
 unique_name_in_owner = true
 layout_mode = 2
-text = "👁"
 focus_mode = 0
+text = "👁"

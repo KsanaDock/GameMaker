@@ -17,3 +17,7 @@ addons/ksanadock_bridge/service/service_logs.txt*
 /assets
 /scenes
 /scripts
+
+addons/ziva_agent
+# VS Code Extensions
+.vscode/changelists.json

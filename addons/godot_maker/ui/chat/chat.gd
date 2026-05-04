@@ -40,6 +40,7 @@ var _connect_ksanadock_btn: Button
 
 var _messages: Array[Dictionary] = []  # {role, content}
 var _current_bubble: PanelContainer = null
+var _thinking_indicator: Control = null
 var _is_streaming := false
 var _active_subagents: Dictionary = {} # agentId -> MessageBubble
 var _context_refs: Array[Dictionary] = [] # {type, data, label}
@@ -128,23 +129,49 @@ func _check_auth_status() -> void:
 
 func _apply_theme() -> void:
 	if not _send_btn: return
-	_send_btn.add_theme_stylebox_override("normal", KPalette.btn_primary())
-	_send_btn.add_theme_stylebox_override("hover", KPalette.btn_primary_hover())
-	_send_btn.add_theme_stylebox_override("pressed", KPalette.btn_primary_pressed())
-	_send_btn.add_theme_color_override("font_color", KPalette.TEXT_PRIMARY)
 	
-	_clear_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
-	_clear_btn.add_theme_stylebox_override("hover", KPalette.btn_secondary_hover())
+	# ── 发送按钮：白色正圆 + 黑色↑箭头（ChatGPT 风格） ──
+	_send_btn.add_theme_stylebox_override("normal", KPalette.btn_send())
+	_send_btn.add_theme_stylebox_override("hover", KPalette.btn_send_hover())
+	_send_btn.add_theme_stylebox_override("pressed", KPalette.btn_send_pressed())
+	_send_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	_send_btn.add_theme_color_override("font_color", Color("#000000"))
+	_send_btn.add_theme_color_override("font_hover_color", Color("#000000"))
+	_send_btn.add_theme_color_override("font_pressed_color", Color("#333333"))
 	
-	_ctx_scene_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
-	_ctx_scene_btn.add_theme_stylebox_override("hover", KPalette.btn_secondary_hover())
+	# ── 顶栏按钮：全部幽灵风格（Ghost Button） ──
+	_clear_btn.add_theme_stylebox_override("normal", KPalette.btn_ghost())
+	_clear_btn.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
+	_clear_btn.add_theme_stylebox_override("pressed", KPalette.btn_ghost())
+	_clear_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	
+	_settings_btn.add_theme_stylebox_override("normal", KPalette.btn_ghost())
+	_settings_btn.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
+	_settings_btn.add_theme_stylebox_override("pressed", KPalette.btn_ghost())
+	_settings_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	_settings_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
+	_settings_btn.add_theme_color_override("font_hover_color", KPalette.TEXT_PRIMARY)
 
-	_settings_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
-	_settings_btn.add_theme_stylebox_override("hover", KPalette.btn_secondary_hover())
+	# ── 附属按钮：幽灵风格（场景上下文、抓取输出等） ──
+	_ctx_scene_btn.add_theme_stylebox_override("normal", KPalette.btn_ghost())
+	_ctx_scene_btn.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
+	_ctx_scene_btn.add_theme_stylebox_override("pressed", KPalette.btn_ghost())
+	_ctx_scene_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	_ctx_scene_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
+	_ctx_scene_btn.add_theme_color_override("font_hover_color", KPalette.TEXT_PRIMARY)
 
+	# ── Provider/Model 下拉框：透明化处理 ──
+	if _provider_btn:
+		_provider_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
+		_provider_btn.add_theme_color_override("font_hover_color", KPalette.TEXT_PRIMARY)
+	if _model_select_btn:
+		_model_select_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
+
+	# ── 输入框：完全透明无边框，融入胶囊体 ──
 	_input_normal = KPalette.input_style_normal()
 	_input_focused = KPalette.input_style_focused()
 	_input_field.add_theme_stylebox_override("normal", _input_normal)
+	_input_field.add_theme_stylebox_override("focus", _input_focused)
 	_input_field.add_theme_color_override("font_color", KPalette.TEXT_PRIMARY)
 	_input_field.add_theme_color_override("font_placeholder_color", KPalette.TEXT_DIM)
 	
@@ -447,6 +474,8 @@ func _send_message() -> void:
 			full_context += "[Context File: %s]\n" % ref.data
 		elif ref.type == "text":
 			full_context += "[Context Reference]:\n%s\n" % ref.data
+		elif ref.type == "scene":
+			full_context += "[Scene Tree Context]:\n%s\n" % ref.data
 		elif ref.type == "code":
 			var meta = ref.get("meta", {})
 			var file = meta.get("file", "unknown")
@@ -490,6 +519,8 @@ func add_context_reference(type: String, data: String, meta: Dictionary = {}) ->
 		label = data.get_file()
 	elif type == "text":
 		label = data.left(15) + "..."
+	elif type == "scene":
+		label = "Scene: " + meta.get("name", "Tree")
 	elif type == "code":
 		# Cursor 风格： filename.gd:11-15
 		var fname = meta.get("file", "").get_file()
@@ -509,7 +540,13 @@ func _update_ref_list() -> void:
 	for i in range(_context_refs.size()):
 		var ref = _context_refs[i]
 		var btn := Button.new()
-		var icon = "📄 " if ref.type == "file" else ("💻 " if ref.type == "code" else "📝 ")
+		var icon = "📄 "
+		match ref.type:
+			"file": icon = "📄 "
+			"code": icon = "💻 "
+			"scene": icon = "🌲 "
+			"text": icon = "📝 "
+		
 		btn.text = icon + ref.label + " ✕"
 		btn.add_theme_font_size_override("font_size", 10)
 		btn.pressed.connect(_on_ref_remove_btn_pressed.bind(i))
@@ -595,8 +632,37 @@ func set_bridge(bridge: Node) -> void:
 		_bridge.agent_reply.connect(_on_agent_reply)
 	if _bridge.has_signal("agent_connected") and not _bridge.agent_connected.is_connected(_on_agent_connected):
 		_bridge.agent_connected.connect(_on_agent_connected)
+	if _bridge.has_signal("file_created") and not _bridge.file_created.is_connected(_on_file_created):
+		_bridge.file_created.connect(_on_file_created)
+	
+	# 如果 bridge 已经连接，直接刷新历史
 	if _bridge.has_method("get_agent_history"):
-		_bridge.get_agent_history(_render_history)
+		if _bridge.has_method("is_agent_connected") and _bridge.is_agent_connected():
+			_bridge.get_agent_history(_render_history)
+
+
+func _on_file_change_reviewed(file_path: String, accepted: bool) -> void:
+	if not accepted:
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "已拒绝并丢弃对 " + file_path.get_file() + " 的改动。")
+		return
+	
+	if _bridge and _bridge.has_method("apply_file_change"):
+		_bridge.apply_file_change(file_path)
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "成功应用改动至 " + file_path.get_file())
+	else:
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "错误：Bridge 无法应用改动。")
+
+
+func _on_file_created(path: String) -> void:
+	# 读取新文件内容进行展示
+	var content = ""
+	if FileAccess.file_exists(path):
+		var f = FileAccess.open(path, FileAccess.READ)
+		if f:
+			content = f.get_as_text()
+			f.close()
+	
+	_add_file_diff_bubble(path, content)
 
 
 func _on_agent_connected() -> void:
@@ -605,8 +671,13 @@ func _on_agent_connected() -> void:
 		_bridge.get_agent_history(_render_history)
 
 
-func _render_history(history: Variant) -> void:
-	if not history is Array:
+func _render_history(history_data: Variant) -> void:
+	var history: Array = []
+	if history_data is Array:
+		history = history_data
+	elif history_data is Dictionary:
+		history = [history_data]
+	else:
 		return
 		
 	if history.is_empty():
@@ -666,21 +737,25 @@ func _on_agent_event(params: Dictionary) -> void:
 	var event_type = params.get("type", "")
 	var msg = params.get("message", "")
 	var agent_id = params.get("agentId", "")
+	
 	if event_type == "process_start":
-		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, msg)
+		_ensure_thinking(msg)
 		_is_streaming = true
 		_send_btn.disabled = true
 	elif event_type == "tool_execution":
-		_add_bubble(MessageBubble.Role.TOOL_EXEC, msg)
+		# 工具执行现在直接更新在 Thinking 状态中，不再增加新的气泡
+		_ensure_thinking(msg)
 	elif event_type == "error":
+		_remove_thinking()
 		_on_stream_error(msg)
 	elif event_type == "process_end":
-		_is_streaming = false
-		_send_btn.disabled = false
-		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, msg)
+		# process_end 不再移除 thinking，因为通常紧接着就是 reply 或已经在 streaming
+		# _remove_thinking() 会在收到第一个 chunk 时由 _on_stream_chunk 处理
+		pass
 	elif event_type == "subagent_start":
-		var bubble = PanelContainer.new()
-		bubble.set_script(MessageBubble)
+		# Subagent 是并行任务，保留其独立展示逻辑，但先移除主 Thinking
+		_remove_thinking()
+		var bubble := _create_bubble(MessageBubble.Role.SUBAGENT, "")
 		bubble.setup_subagent(params.get("title", _tr("bg_task_default")))
 		bubble.append_subagent_log(msg)
 		_msg_list.add_child(bubble)
@@ -697,17 +772,39 @@ func _on_agent_event(params: Dictionary) -> void:
 			sub_bubble.append_subagent_log("[color=#4ade80]✔[/color] " + msg)
 			_active_subagents.erase(agent_id)
 			_scroll_to_bottom()
+	elif event_type == "file_change":
+		_add_file_diff_bubble(params.get("path", ""), params.get("diff", ""))
+
+
+func _add_file_diff_bubble(file_path: String, diff_content: String) -> void:
+	var bubble := _create_bubble(MessageBubble.Role.FILE_DIFF, "")
+	bubble.setup_file_diff(file_path, diff_content)
+	bubble.file_change_reviewed.connect(_on_file_change_reviewed)
+	_msg_list.add_child(bubble)
+	_scroll_to_bottom()
 
 
 func _on_agent_reply(params: Dictionary) -> void:
 	var text = params.get("text", "")
-	if text != "":
+	_remove_thinking()
+	
+	# 如果已经在 streaming 过程中创建了气泡，直接完成它
+	if _current_bubble:
+		_on_stream_done(text)
+	elif text != "":
+		# 否则创建一个新气泡（针对非流式返回）
 		_current_bubble = _create_bubble(MessageBubble.Role.AI, "")
 		_msg_list.add_child(_current_bubble)
 		_on_stream_done(text)
 
 
 func _on_stream_chunk(text: String) -> void:
+	# 关键：当收到第一个数据块时，移除 Thinking 状态并创建正式气泡
+	if not _current_bubble:
+		_remove_thinking()
+		_current_bubble = _create_bubble(MessageBubble.Role.AI, "")
+		_msg_list.add_child(_current_bubble)
+	
 	if _current_bubble:
 		_current_bubble.append_text(text)
 	_scroll_to_bottom()
@@ -726,6 +823,7 @@ func _on_stream_done(full_text: String) -> void:
 func _on_stream_error(message: String) -> void:
 	_is_streaming = false
 	_send_btn.disabled = false
+	_remove_thinking()
 	_add_bubble(MessageBubble.Role.AI, "[img=16]res://addons/godot_maker/icons/ui/triangle-alert.svg[/img] Error: %s" % message)
 	_current_bubble = null
 
@@ -757,15 +855,44 @@ func _clear_chat() -> void:
 	_messages.clear()
 	_active_subagents.clear()
 	_current_bubble = null
+	_thinking_indicator = null
+
+
+func _ensure_thinking(status: String) -> void:
+	if not _thinking_indicator:
+		var ThinkingIndicator = load("res://addons/godot_maker/ui/chat/thinking_indicator.gd")
+		_thinking_indicator = ThinkingIndicator.new()
+		
+		# 包装一层以处理边距
+		var margin := MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 36)
+		margin.add_theme_constant_override("margin_top", 4)
+		margin.add_theme_constant_override("margin_bottom", 4)
+		margin.add_child(_thinking_indicator)
+		
+		_msg_list.add_child(margin)
+	
+	_thinking_indicator.set_status(status)
+	_scroll_to_bottom()
+
+
+func _remove_thinking() -> void:
+	if _thinking_indicator:
+		var parent = _thinking_indicator.get_parent()
+		if parent is MarginContainer:
+			parent.queue_free()
+		else:
+			_thinking_indicator.queue_free()
+		_thinking_indicator = null
 
 
 func _attach_scene_context() -> void:
 	var scene_root := EditorInterface.get_edited_scene_root()
 	if not scene_root:
-		_input_field.text += "\n" + _tr("no_scene")
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("no_scene"))
 		return
 	var tree_text := _dump_tree(scene_root, 0)
-	_input_field.text += "\n--- Scene Tree ---\n" + tree_text
+	add_context_reference("scene", tree_text, {"name": scene_root.name})
 
 
 func _dump_tree(node: Node, depth: int) -> String:
