@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://bt5x607hqvv"]
 
-[ext_resource type="Script" uid="uid://div2afh2v28x5" path="res://addons/godot_maker/ui/chat/chat.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://bakax6nr10cc4" path="res://addons/godot_maker/icons/ui/x.svg" id="3"]
-[ext_resource type="Texture2D" uid="uid://dd15hxs1jriwk" path="res://addons/godot_maker/icons/ui/clipboard.svg" id="4"]
+[ext_resource type="Script" path="res://addons/godot_maker/ui/chat/chat.gd" id="1"]
+[ext_resource type="Texture2D" path="res://addons/godot_maker/icons/ui/x.svg" id="3"]
+[ext_resource type="Texture2D" path="res://addons/godot_maker/icons/ui/clipboard.svg" id="4"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Header"]
 content_margin_left = 0.0
