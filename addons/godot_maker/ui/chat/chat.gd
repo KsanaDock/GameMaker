@@ -620,15 +620,45 @@ func _render_history(history: Variant) -> void:
 		if not msg is Dictionary: continue
 		var role_str = msg.get("role", "")
 		var content = msg.get("content", "")
-		var role = MessageBubble.Role.AI
-		if role_str == "user":
-			role = MessageBubble.Role.USER
-		elif role_str == "tool":
-			role = MessageBubble.Role.TOOL_EXEC
 		
-		if content != "" or msg.has("tool_calls"):
-			_add_bubble(role, content)
-			_messages.append({"role": role_str, "content": content})
+		if role_str == "assistant":
+			# 渲染工具调用（显示为齿轮气泡，匹配实时体验）
+			if msg.has("tool_calls") and msg["tool_calls"] is Array:
+				for tc in msg["tool_calls"]:
+					if not tc is Dictionary: continue
+					var fn = tc.get("function", {})
+					var name = fn.get("name", "unknown")
+					var args = fn.get("arguments", "{}")
+					_add_bubble(MessageBubble.Role.TOOL_EXEC, _tr("tool_executing") % [name, args])
+			
+			# 渲染文本回复
+			if content != "":
+				_add_bubble(MessageBubble.Role.AI, content)
+			
+			# 保存到上下文记录
+			var assistant_msg = {"role": "assistant", "content": content}
+			if msg.has("tool_calls"):
+				assistant_msg["tool_calls"] = msg["tool_calls"]
+			_messages.append(assistant_msg)
+				
+		elif role_str == "user":
+			_add_bubble(MessageBubble.Role.USER, content)
+			_messages.append({"role": "user", "content": content})
+			
+		elif role_str == "tool":
+			# 渲染工具执行结果
+			var tool_name = msg.get("name", "")
+			var display_text = content
+			if tool_name != "":
+				display_text = _tr("tool_result") % [tool_name, content]
+			_add_bubble(MessageBubble.Role.TOOL_EXEC, display_text)
+			
+			# 保存到上下文记录
+			var tool_msg = {"role": "tool", "content": content}
+			if msg.has("tool_call_id"): tool_msg["tool_call_id"] = msg["tool_call_id"]
+			if tool_name != "": tool_msg["name"] = tool_name
+			_messages.append(tool_msg)
+	
 	_scroll_to_bottom()
 
 
