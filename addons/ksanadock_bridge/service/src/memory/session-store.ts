@@ -23,7 +23,8 @@ export class SessionStore {
                 content: m.content || "",
                 tool_calls: m.tool_calls,
                 tool_call_id: m.tool_call_id,
-                name: m.name
+                name: m.name,
+                checkpoint: m.checkpoint
             }));
 
             await fs.writeFile(filePath, JSON.stringify({

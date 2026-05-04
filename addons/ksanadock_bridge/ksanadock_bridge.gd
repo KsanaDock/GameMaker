@@ -250,6 +250,22 @@ func get_agent_history(callback: Callable) -> void:
 	}
 	_clients[0].send_text(JSON.stringify(request))
 
+func call_agent_method(method: String, params: Dictionary, callback: Callable) -> void:
+	if _clients.is_empty():
+		callback.call({"error": "No agent connected"})
+		return
+	
+	var req_id = "agent_" + str(Time.get_ticks_msec())
+	_pending_requests[req_id] = callback
+	
+	var request = {
+		"jsonrpc": "2.0",
+		"method": method,
+		"params": params,
+		"id": req_id
+	}
+	_clients[0].send_text(JSON.stringify(request))
+
 func restart_service() -> void:
 	print("[GodotMaker Bridge] Restarting Agent service...")
 	_stop_agent_service()

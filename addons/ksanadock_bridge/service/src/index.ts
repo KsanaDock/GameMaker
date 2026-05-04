@@ -5,6 +5,7 @@ import { AgentLoop } from './core/loop.js';
 import { setupTools } from './tools/index.js';
 import { SkillManager } from './skills/skill-manager.js';
 import { TaskManager } from './core/task_manager.js';
+import { SessionRollbackManager } from './core/session-rollbacks.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,8 @@ async function main() {
     const client = new BridgeClient(9090);
     const toolRegistry = setupTools(client, projectRoot);
     const agentLoop = new AgentLoop(client, toolRegistry, projectRoot);
+    const rollbackManager = new SessionRollbackManager(projectRoot);
+    await rollbackManager.initialize();
     
     // Load skills
     const skillManager = new SkillManager(projectRoot, toolRegistry, client);
@@ -46,10 +49,18 @@ async function main() {
             loopInitialized = true;
         }
 
+        const checkpoint = await rollbackManager.beforeUserMessage(`Before: ${truncateLabel(message)}`);
+        const checkpointMeta = {
+            id: checkpoint.checkpoint_id,
+            label: checkpoint.label,
+            messageIndex: checkpoint.messageIndex,
+            fileCount: checkpoint.file_count
+        };
+
         // Push message to the long-running loop (with optional images)
-        agentLoop.pushMessage({ role: 'user', content: message }, images);
+        agentLoop.pushMessage({ role: 'user', content: message }, images, checkpointMeta);
         
-        return { type: 'text', content: 'Task received by Agent Loop...' };
+        return { type: 'text', content: 'Task received by Agent Loop...', checkpoint: checkpointMeta };
     });
 
     client.onMethod('get_history', async (params: any) => {
@@ -73,6 +84,18 @@ async function main() {
         };
     });
 
+    client.onMethod('list_session_checkpoints', async () => {
+        return rollbackManager.listCurrentSessionCheckpoints();
+    });
+
+    client.onMethod('get_session_checkpoint', async (params: any) => {
+        return rollbackManager.getCheckpoint(params?.checkpoint_id || '');
+    });
+
+    client.onMethod('restore_session_checkpoint', async (params: any) => {
+        return rollbackManager.restoreCheckpoint(params?.checkpoint_id || '', params?.files);
+    });
+
     try {
         await client.connect();
         console.log('Ready to help build games! (Event-Driven Loop Engine active)');
@@ -88,3 +111,9 @@ async function main() {
 }
 
 main();
+
+function truncateLabel(value: string): string {
+    const label = String(value || '').replace(/\s+/g, ' ').trim();
+    if (label.length <= 80) return label || 'User message';
+    return `${label.slice(0, 77)}...`;
+}

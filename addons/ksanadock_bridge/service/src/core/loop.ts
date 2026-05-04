@@ -170,9 +170,12 @@ Available Subagents:
         return false;
     }
 
-    public pushMessage(msg: Message, images?: string[]) {
+    public pushMessage(msg: Message, images?: string[], checkpoint?: Message['checkpoint']) {
         if (images && images.length > 0) {
             msg = this.buildMultimodalMessage(msg, images);
+        }
+        if (checkpoint) {
+            msg = { ...msg, checkpoint };
         }
         this.messageQueue.push(msg);
         // Pre-emptive save of the incoming message if added to history directly later

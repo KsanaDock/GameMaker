@@ -7,6 +7,9 @@ import { registerSubagentTools } from './subagent-tools.js';
 import { registerSymbolTools } from './symbol-tools.js';
 import { registerVisionTools } from './vision-tools.js';
 import { registerResearchTools } from './research-tools.js';
+import { registerShellTools } from './shell-tools.js';
+import { registerCheckpointTools } from './checkpoint-tools.js';
+import { registerStructuredEditTools } from './structured-edit-tools.js';
 
 export function setupTools(client: BridgeClient, projectRoot: string): ToolRegistry {
     const registry = new ToolRegistry();
@@ -17,5 +20,8 @@ export function setupTools(client: BridgeClient, projectRoot: string): ToolRegis
     registerSymbolTools(registry, projectRoot);
     registerVisionTools(registry, projectRoot);
     registerResearchTools(registry, projectRoot);
+    registerShellTools(registry, projectRoot);
+    registerCheckpointTools(registry, projectRoot);
+    registerStructuredEditTools(registry, projectRoot);
     return registry;
 }

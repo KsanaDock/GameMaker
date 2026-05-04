@@ -5,6 +5,8 @@ const PARALLEL_SAFE_TOOLS = new Set([
     'grep_symbols',
     'get_file_symbols',
     'analyze_image',
+    'checkpoint_list',
+    'checkpoint_get',
     'task_list',
     'task_get'
 ]);

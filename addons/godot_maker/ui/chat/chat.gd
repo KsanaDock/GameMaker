@@ -45,6 +45,13 @@ var _is_streaming := false
 var _active_subagents: Dictionary = {} # agentId -> MessageBubble
 var _context_refs: Array[Dictionary] = [] # {type, data, label}
 var _grab_btn: Button
+var _rollback_dialog: AcceptDialog
+var _rollback_list: ItemList
+var _rollback_detail: RichTextLabel
+var _rollback_restore_btn: Button
+var _rollback_checkpoints: Array = []
+var _selected_checkpoint_id: String = ""
+var _pending_user_bubble: PanelContainer = null
 var _input_normal: StyleBoxFlat
 var _input_focused: StyleBoxFlat
 var _attach_img_btn: Button
@@ -248,6 +255,8 @@ func _connect_signals() -> void:
 	_grab_btn.pressed.connect(_grab_output_selection)
 	if has_node("%CtxBar"):
 		get_node("%CtxBar").add_child(_grab_btn)
+
+	_create_rollback_dialog()
 
 	# ── 图片上传按钮 ──
 	_attach_img_btn = Button.new()
@@ -537,7 +546,7 @@ func _send_message() -> void:
 		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("vision_not_supported"))
 
 	_input_field.text = ""
-	_add_bubble_with_images(MessageBubble.Role.USER, text, image_textures)
+	_pending_user_bubble = _add_bubble_with_images(MessageBubble.Role.USER, text, image_textures)
 	_messages.append({"role": "user", "content": text})
 	
 	_context_refs.clear()
@@ -634,6 +643,17 @@ func _on_bridge_response(result: Dictionary) -> void:
 	if result.has("error"):
 		_on_stream_error(str(result.error))
 		return
+	
+	if result.has("checkpoint") and _pending_user_bubble:
+		var checkpoint = result.get("checkpoint", {})
+		if checkpoint is Dictionary and checkpoint.get("id", "") != "":
+			if _pending_user_bubble.has_method("set_checkpoint"):
+				_pending_user_bubble.set_checkpoint(checkpoint.get("id", ""))
+			if not _pending_user_bubble.rollback_requested.is_connected(_on_message_rollback_requested):
+				_pending_user_bubble.rollback_requested.connect(_on_message_rollback_requested)
+			if not _messages.is_empty():
+				_messages[_messages.size() - 1]["checkpoint"] = checkpoint
+		_pending_user_bubble = null
 	
 	var type = result.get("type", "text")
 	if type == "plan":
@@ -748,6 +768,177 @@ func _on_tasks_checked(result: Dictionary) -> void:
 		_add_resume_prompt_bubble(result.get("task_count", 0))
 
 
+func _create_rollback_dialog() -> void:
+	if _rollback_dialog:
+		return
+	_rollback_dialog = AcceptDialog.new()
+	_rollback_dialog.title = "Session Rollback"
+	_rollback_dialog.size = Vector2i(760, 520)
+	_rollback_dialog.get_ok_button().text = "Close"
+	add_child(_rollback_dialog)
+	
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
+	_rollback_dialog.add_child(root)
+	
+	var split := HSplitContainer.new()
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(split)
+	
+	_rollback_list = ItemList.new()
+	_rollback_list.custom_minimum_size = Vector2(260, 360)
+	_rollback_list.item_selected.connect(_on_rollback_selected)
+	split.add_child(_rollback_list)
+	
+	_rollback_detail = RichTextLabel.new()
+	_rollback_detail.bbcode_enabled = true
+	_rollback_detail.fit_content = false
+	_rollback_detail.scroll_active = true
+	_rollback_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rollback_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rollback_detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(_rollback_detail)
+	
+	var actions := HBoxContainer.new()
+	actions.alignment = BoxContainer.ALIGNMENT_END
+	root.add_child(actions)
+	
+	_rollback_restore_btn = Button.new()
+	_rollback_restore_btn.text = "Restore selected checkpoint"
+	_rollback_restore_btn.disabled = true
+	_rollback_restore_btn.add_theme_stylebox_override("normal", KPalette.btn_primary())
+	_rollback_restore_btn.add_theme_stylebox_override("hover", KPalette.btn_primary_hover())
+	_rollback_restore_btn.pressed.connect(_restore_selected_checkpoint)
+	actions.add_child(_rollback_restore_btn)
+
+
+func _open_rollback_dialog(checkpoint_id: String = "") -> void:
+	if not _bridge or not _bridge.has_method("call_agent_method"):
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "Rollback is unavailable: agent bridge is not connected.")
+		return
+	_selected_checkpoint_id = checkpoint_id
+	_rollback_restore_btn.disabled = true
+	_rollback_detail.text = "Loading checkpoints..."
+	_rollback_list.clear()
+	_rollback_dialog.popup_centered()
+	if checkpoint_id != "":
+		_rollback_restore_btn.disabled = false
+		_bridge.call_agent_method("get_session_checkpoint", {"checkpoint_id": checkpoint_id}, _on_rollback_detail_loaded)
+	else:
+		_bridge.call_agent_method("list_session_checkpoints", {}, _on_rollback_list_loaded)
+
+
+func _on_message_rollback_requested(checkpoint_id: String) -> void:
+	_open_rollback_dialog(checkpoint_id)
+
+
+func _on_rollback_list_loaded(result: Variant) -> void:
+	if result is Dictionary and result.has("error"):
+		_rollback_detail.text = "[color=#ef4444]Error:[/color] " + str(result.error)
+		return
+	
+	_rollback_checkpoints = []
+	if result is Dictionary:
+		_rollback_checkpoints = result.get("checkpoints", [])
+	
+	_rollback_list.clear()
+	if _rollback_checkpoints.is_empty():
+		_rollback_detail.text = "No checkpoints for this session yet."
+		return
+	
+	for checkpoint in _rollback_checkpoints:
+		if not checkpoint is Dictionary:
+			continue
+		var label = checkpoint.get("label", "Checkpoint")
+		var created = checkpoint.get("createdAt", "")
+		var count = checkpoint.get("file_count", 0)
+		_rollback_list.add_item("%s\n%s - %s files" % [label, created, count])
+	
+	_rollback_list.select(0)
+	_on_rollback_selected(0)
+
+
+func _on_rollback_selected(index: int) -> void:
+	if index < 0 or index >= _rollback_checkpoints.size():
+		return
+	var checkpoint = _rollback_checkpoints[index]
+	if not checkpoint is Dictionary:
+		return
+	_selected_checkpoint_id = checkpoint.get("id", "")
+	_rollback_restore_btn.disabled = _selected_checkpoint_id == ""
+	_rollback_detail.text = "Loading checkpoint details..."
+	_bridge.call_agent_method("get_session_checkpoint", {"checkpoint_id": _selected_checkpoint_id}, _on_rollback_detail_loaded)
+
+
+func _on_rollback_detail_loaded(result: Variant) -> void:
+	if result is Dictionary and result.has("error"):
+		_rollback_detail.text = "[color=#ef4444]Error:[/color] " + str(result.error)
+		return
+	if not result is Dictionary:
+		_rollback_detail.text = "Invalid checkpoint details."
+		return
+	
+	var lines: Array[String] = []
+	lines.append("[b]%s[/b]" % result.get("label", "Checkpoint"))
+	lines.append("Created: %s" % result.get("createdAt", ""))
+	lines.append("Files: %s" % result.get("file_count", 0))
+	lines.append("")
+	
+	var summary: Dictionary = result.get("summary", {})
+	if not summary.is_empty():
+		lines.append("[b]Current workspace state[/b]")
+		for key in summary.keys():
+			lines.append("- %s: %s" % [key, summary[key]])
+		lines.append("")
+	
+	var files: Array = result.get("files", [])
+	if not files.is_empty():
+		lines.append("[b]Changed files[/b]")
+		var shown := 0
+		for file in files:
+			if not file is Dictionary:
+				continue
+			var status = file.get("status", "")
+			if status == "unchanged" or status == "still_missing":
+				continue
+			lines.append("- [code]%s[/code] - %s" % [file.get("path", ""), status])
+			shown += 1
+			if shown >= 80:
+				lines.append("- ...")
+				break
+		if shown == 0:
+			lines.append("No changed files relative to this checkpoint.")
+	
+	_rollback_detail.text = "\n".join(lines)
+
+
+func _restore_selected_checkpoint() -> void:
+	if _selected_checkpoint_id == "":
+		return
+	_rollback_restore_btn.disabled = true
+	_rollback_restore_btn.text = "Restoring..."
+	_bridge.call_agent_method("restore_session_checkpoint", {"checkpoint_id": _selected_checkpoint_id}, _on_checkpoint_restored)
+
+
+func _on_checkpoint_restored(result: Variant) -> void:
+	_rollback_restore_btn.text = "Restore selected checkpoint"
+	if result is Dictionary and result.has("error"):
+		_rollback_restore_btn.disabled = false
+		_rollback_detail.text += "\n\n[color=#ef4444]Restore failed:[/color] " + str(result.error)
+		return
+	
+	var restored_count := 0
+	var skipped_count := 0
+	if result is Dictionary:
+		restored_count = result.get("restored", []).size()
+		skipped_count = result.get("skipped", []).size()
+	
+	_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "Restored checkpoint. Files restored: %d, skipped: %d." % [restored_count, skipped_count])
+	_rollback_dialog.hide()
+	if Engine.is_editor_hint():
+		EditorInterface.get_resource_filesystem().scan()
+
+
 func _render_history(history_data: Variant) -> void:
 	var history: Array = []
 	if history_data is Array:
@@ -790,8 +981,16 @@ func _render_history(history_data: Variant) -> void:
 			_messages.append(assistant_msg)
 				
 		elif role_str == "user":
-			_add_bubble(MessageBubble.Role.USER, content)
-			_messages.append({"role": "user", "content": content})
+			var bubble = _add_bubble(MessageBubble.Role.USER, content)
+			var user_msg = {"role": "user", "content": content}
+			if msg.has("checkpoint") and msg["checkpoint"] is Dictionary:
+				var checkpoint = msg["checkpoint"]
+				user_msg["checkpoint"] = checkpoint
+				if bubble and checkpoint.get("id", "") != "":
+					bubble.set_checkpoint(checkpoint.get("id", ""))
+					if not bubble.rollback_requested.is_connected(_on_message_rollback_requested):
+						bubble.rollback_requested.connect(_on_message_rollback_requested)
+			_messages.append(user_msg)
 			
 		elif role_str == "tool":
 			# 渲染工具执行结果
@@ -905,11 +1104,12 @@ func _on_stream_error(message: String) -> void:
 	_current_bubble = null
 
 
-func _add_bubble(role: int, text: String) -> void:
+func _add_bubble(role: int, text: String) -> PanelContainer:
 	var bubble := _create_bubble(role, text)
 	if _msg_list:
 		_msg_list.add_child(bubble)
 	_scroll_to_bottom()
+	return bubble
 
 
 func _create_bubble(role: int, text: String, images: Array = []) -> PanelContainer:
@@ -982,11 +1182,12 @@ func _dump_tree(node: Node, depth: int) -> String:
 
 # ======== 图片上传功能 ========
 
-func _add_bubble_with_images(role: int, text: String, images: Array = []) -> void:
+func _add_bubble_with_images(role: int, text: String, images: Array = []) -> PanelContainer:
 	var bubble := _create_bubble(role, text, images)
 	if _msg_list:
 		_msg_list.add_child(bubble)
 	_scroll_to_bottom()
+	return bubble
 
 
 func _on_attach_image_pressed() -> void:

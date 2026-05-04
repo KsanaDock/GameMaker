@@ -25,6 +25,13 @@ export interface Message {
     name?: string;
     tool_calls?: ToolCall[];
     tool_call_id?: string;
+    checkpoint?: {
+        id: string;
+        label?: string;
+        createdAt?: string;
+        messageIndex?: number;
+        fileCount?: number;
+    };
 }
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed';

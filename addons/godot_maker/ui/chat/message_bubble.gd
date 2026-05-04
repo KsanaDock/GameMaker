@@ -7,6 +7,7 @@ enum Role {AI, USER, PLAN, SYSTEM_EVENT, TOOL_EXEC, SUBAGENT, FILE_DIFF, RESUME_
 signal plan_approved(auto_run: bool)
 signal file_change_reviewed(file_path: String, accepted: bool)
 signal resume_requested()
+signal rollback_requested(checkpoint_id: String)
 
 var _role: Role = Role.AI
 var _content_label: RichTextLabel
@@ -14,6 +15,7 @@ var _subagent_logs_container: VBoxContainer
 var _subagent_header_btn: Button
 var _tool_detail_container: VBoxContainer
 var _tool_collapsed: bool = true
+var _checkpoint_id: String = ""
 
 func _ready() -> void:
 	# 由父级调用 setup() 初始化，不在 _ready 中构建
@@ -23,6 +25,12 @@ func _ready() -> void:
 func setup(role: Role, text: String, images: Array = []) -> void:
 	_role = role
 	_build(text, images)
+
+
+func set_checkpoint(checkpoint_id: String) -> void:
+	_checkpoint_id = checkpoint_id
+	if _role == Role.USER and _checkpoint_id != "":
+		_add_user_rollback_button()
 
 
 func setup_plan(title: String, steps: Array) -> void:
@@ -143,6 +151,8 @@ func _build(text: String, images: Array = []) -> void:
 	_content_label.add_theme_font_size_override("normal_font_size", 14)
 	_content_label.text = _format_text(text)
 	hbox.add_child(_content_label)
+	if _role == Role.USER and _checkpoint_id != "":
+		_add_user_rollback_button()
 
 	# ── 图片附件显示 ──
 	if not images.is_empty():
@@ -165,6 +175,38 @@ func _build(text: String, images: Array = []) -> void:
 		content_vbox.add_child(hbox)
 		content_vbox.add_child(img_container)
 		bubble_panel.add_child(content_vbox)
+
+
+func _add_user_rollback_button() -> void:
+	if _checkpoint_id == "":
+		return
+	if has_node("UserRollbackMargin"):
+		return
+	var margin := MarginContainer.new()
+	margin.name = "UserRollbackMargin"
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left", 60)
+	margin.add_theme_constant_override("margin_right", 4)
+	margin.add_theme_constant_override("margin_top", 2)
+	add_child(margin)
+	
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	margin.add_child(row)
+	
+	var btn := Button.new()
+	btn.text = "Rollback"
+	btn.tooltip_text = "Restore project files to before this message"
+	btn.custom_minimum_size = Vector2(72, 22)
+	btn.add_theme_font_size_override("font_size", 10)
+	btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
+	btn.add_theme_color_override("font_hover_color", KPalette.TEXT_PRIMARY)
+	btn.add_theme_stylebox_override("normal", KPalette.btn_ghost())
+	btn.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
+	btn.add_theme_stylebox_override("pressed", KPalette.btn_ghost())
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	btn.pressed.connect(func(): rollback_requested.emit(_checkpoint_id))
+	row.add_child(btn)
 
 
 ## 构建工具执行日志 — 极简内联行（无Panel/无背景/无边框）

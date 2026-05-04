@@ -223,6 +223,20 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_8tn6s")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_r6c6c")
 text = "设置"
 
+[node name="RollbackBtn" type="Button" parent="HeaderBG/Margin/Header" unique_id=1919182837]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 28)
+layout_mode = 2
+tooltip_text = "View and restore agent checkpoints"
+theme_override_colors/font_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
+theme_override_colors/font_hover_color = Color(0.9098039, 0.9098039, 0.9098039, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_w3bsu")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ysvs0")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8tn6s")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_r6c6c")
+text = "Rollback"
+
 [node name="Scroll" type="ScrollContainer" parent="." unique_id=1707535417]
 unique_name_in_owner = true
 layout_mode = 2
