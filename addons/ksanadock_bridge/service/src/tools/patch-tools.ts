@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getBlockedGameArtifactReason } from './game-file-guard.js';
 
 export function registerPatchTools(registry: any, projectRoot: string) {
     registry.register({
@@ -22,6 +23,11 @@ Usage:
         },
         handler: async (args: any) => {
             const { file_path, old_string, new_string, replace_all = false } = args;
+            const blockedReason = getBlockedGameArtifactReason(file_path || '');
+            if (blockedReason) {
+                return { error: blockedReason };
+            }
+
             const fullPath = path.resolve(projectRoot, file_path);
             
             if (!fullPath.startsWith(projectRoot)) {

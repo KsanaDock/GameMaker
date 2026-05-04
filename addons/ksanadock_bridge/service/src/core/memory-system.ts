@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { ensureKsanadockDir } from './project-data.js';
 
 export const ENTRYPOINT_NAME = 'MEMORY.md';
 export const MAX_ENTRYPOINT_LINES = 200;
@@ -46,7 +47,8 @@ export function truncateEntrypointContent(raw: string): string {
 }
 
 export async function buildMemoryPrompt(projectRoot: string): Promise<string> {
-    const memoryDir = path.join(projectRoot, '.ksanadock', 'memory');
+    const ksanadockDir = await ensureKsanadockDir(projectRoot);
+    const memoryDir = path.join(ksanadockDir, 'memory');
     await ensureMemoryDirExists(memoryDir);
 
     const entrypoint = path.join(memoryDir, ENTRYPOINT_NAME);

@@ -4,6 +4,7 @@ import type { Message } from '../types/index.js';
 import type { ToolRegistry } from '../tools/tool-registry.js';
 import { getHierarchicalContext } from '../context/project-context.js';
 import type { BridgeClient } from '../client.js';
+import { isParallelSafeTool } from '../tools/tool-concurrency.js';
 
 dotenv.config();
 
@@ -38,7 +39,7 @@ export class Subagent {
         if (type === "code-reviewer") {
             typePrompt = "You are an independent Code Reviewer agent. Review code for safety, scalability, best practices, and correctness. Report findings concisely. Do NOT make edits yourself unless specifically asked in the prompt.";
         } else if (type === "implementer") {
-            typePrompt = "You are an Implementation agent. Your job is to strictly follow instructions to write code, build components, and test the project. Work systematically.";
+            typePrompt = "You are an Implementation agent. Your job is to strictly follow instructions, write production game code, build components, and validate the playable project. Work systematically.";
         }
 
         const sysPrompt = `${typePrompt}\nYour goal is to solve a specific subtask and report back a concise summary.
@@ -46,8 +47,11 @@ You have access to tools like reading files, modifying files, and performing dia
 
 ## Best Practices
 1. **Architecture Discovery**: Use \`grep_symbols\` to find function signatures before calling them.
-2. **Quality Assurance**: Use available validation tools after any edit to verify correctness.
-3. **Concision**: Report only the necessary details to the Coordinator.
+2. **Reference Awareness**: For research-oriented subtasks, use the reference research tools and report the generated \`.ksanadock/references/\` files back to the Coordinator. Do not clone GitHub repositories unless the subtask explicitly asks for code references.
+3. **Production-Only Files**: Do not create \`test\` folders, test scenes, test scripts, sample harnesses, or debug menu entries. Validate official game scenes and scripts directly.
+4. **Playable Completion**: If your subtask changes gameplay, leave it connected to the playable scene path, with scripts mounted, exported scenes assigned, needed groups set, and camera/input requirements satisfied.
+5. **Quality Assurance**: Use available validation tools after any edit to verify correctness, without creating test artifacts.
+6. **Concision**: Report only the necessary details to the Coordinator.
 
 PROJECT_SPECIFIC_GUIDANCE:
 ${projectContext || "None"}
@@ -88,35 +92,7 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
                     });
                 }
 
-                // Execute tools
-                for (const toolCall of message.tool_calls as any[]) {
-                    const toolName = toolCall.function.name;
-                    const args = JSON.parse(toolCall.function.arguments);
-                    console.log(`[Subagent Tool] ${toolName}`);
-                    
-                    this.client.sendNotification('agent_event', { 
-                        type: 'subagent_tool', 
-                        agentId: agentId, 
-                        message: `Running ${toolName}...` 
-                    });
-
-                    try {
-                        const result = await this.toolRegistry.execute(toolName, args);
-                        messages.push({
-                            role: 'tool',
-                            tool_call_id: toolCall.id,
-                            name: toolName,
-                            content: typeof result === 'string' ? result : JSON.stringify(result)
-                        });
-                    } catch(err: any) {
-                        messages.push({
-                            role: 'tool',
-                            tool_call_id: toolCall.id,
-                            name: toolName,
-                            content: `[Subagent Tool Error] ${err.message}`
-                        });
-                    }
-                }
+                messages.push(...await this.executeToolCalls(message.tool_calls as any[], agentId));
             } else if (message.content) {
                 console.log(`[Subagent] Completed with summary.`);
                 this.client.sendNotification('agent_event', { type: 'subagent_end', agentId: agentId, message: "Completed" });
@@ -129,6 +105,78 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
         
         this.client.sendNotification('agent_event', { type: 'subagent_end', agentId: agentId, message: "Timeout" });
         return "[Subagent] Iteration limit reached without final conclusion.";
+    }
+
+    private async executeToolCalls(toolCalls: any[], agentId: string): Promise<Message[]> {
+        const results: Message[] = [];
+        let readOnlyBatch: any[] = [];
+
+        const flushReadOnlyBatch = async () => {
+            if (readOnlyBatch.length === 0) return;
+            const batch = readOnlyBatch;
+            readOnlyBatch = [];
+            if (batch.length > 1) {
+                this.client.sendNotification('agent_event', {
+                    type: 'subagent_tool',
+                    agentId,
+                    message: `Running ${batch.length} read-only tools in parallel...`
+                });
+            }
+            results.push(...await Promise.all(batch.map(toolCall => this.executeSingleToolCall(toolCall, agentId))));
+        };
+
+        for (const toolCall of toolCalls) {
+            const toolName = toolCall?.function?.name || '';
+            if (isParallelSafeTool(toolName)) {
+                readOnlyBatch.push(toolCall);
+            } else {
+                await flushReadOnlyBatch();
+                results.push(await this.executeSingleToolCall(toolCall, agentId));
+            }
+        }
+
+        await flushReadOnlyBatch();
+        return results;
+    }
+
+    private async executeSingleToolCall(toolCall: any, agentId: string): Promise<Message> {
+        const toolName = toolCall?.function?.name || 'unknown_tool';
+        let args: any = {};
+
+        try {
+            args = JSON.parse(toolCall?.function?.arguments || '{}');
+        } catch (err: any) {
+            return {
+                role: 'tool',
+                tool_call_id: toolCall?.id || '',
+                name: toolName,
+                content: `[Subagent Tool Error] Error parsing arguments for ${toolName}: ${err.message}`
+            };
+        }
+
+        console.log(`[Subagent Tool] ${toolName}`);
+        this.client.sendNotification('agent_event', { 
+            type: 'subagent_tool', 
+            agentId, 
+            message: `Running ${toolName}...` 
+        });
+
+        try {
+            const result = await this.toolRegistry.execute(toolName, args);
+            return {
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                name: toolName,
+                content: typeof result === 'string' ? result : JSON.stringify(result)
+            };
+        } catch(err: any) {
+            return {
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                name: toolName,
+                content: `[Subagent Tool Error] ${err.message}`
+            };
+        }
     }
 
     private async callOpenRouter(messages: Message[], tools: any[], retries = 3) {

@@ -47,6 +47,12 @@ var _context_refs: Array[Dictionary] = [] # {type, data, label}
 var _grab_btn: Button
 var _input_normal: StyleBoxFlat
 var _input_focused: StyleBoxFlat
+var _attach_img_btn: Button
+var _img_dialog: FileDialog
+var _pending_images: Array[Dictionary] = [] # {base64: String, texture: ImageTexture}
+var _img_preview: HBoxContainer
+const MAX_IMAGE_SIZE_MB := 4.0
+const MAX_IMAGE_COUNT := 3
 
 
 func _process(_delta: float) -> void:
@@ -242,6 +248,36 @@ func _connect_signals() -> void:
 	_grab_btn.pressed.connect(_grab_output_selection)
 	if has_node("%CtxBar"):
 		get_node("%CtxBar").add_child(_grab_btn)
+
+	# ── 图片上传按钮 ──
+	_attach_img_btn = Button.new()
+	_attach_img_btn.text = " 📎"
+	_attach_img_btn.tooltip_text = _tr("attach_image")
+	_attach_img_btn.add_theme_font_size_override("font_size", 14)
+	_attach_img_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
+	_attach_img_btn.add_theme_stylebox_override("hover", KPalette.btn_secondary_hover())
+	_attach_img_btn.pressed.connect(_on_attach_image_pressed)
+	if has_node("%CtxBar"):
+		get_node("%CtxBar").add_child(_attach_img_btn)
+
+	# ── 图片预览区域 ──
+	_img_preview = HBoxContainer.new()
+	_img_preview.add_theme_constant_override("separation", 6)
+	_img_preview.visible = false
+	if has_node("%CtxBar"):
+		get_node("%CtxBar").get_parent().add_child(_img_preview)
+		# Move preview before RefList area
+		get_node("%CtxBar").get_parent().move_child(_img_preview, 1)
+
+	# ── 文件选择器 ──
+	_img_dialog = FileDialog.new()
+	_img_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_img_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_img_dialog.filters = PackedStringArray(["*.png ; PNG Images", "*.jpg, *.jpeg ; JPEG Images", "*.webp ; WebP Images", "*.bmp ; BMP Images"])
+	_img_dialog.title = _tr("attach_image")
+	_img_dialog.size = Vector2i(600, 400)
+	_img_dialog.file_selected.connect(_on_image_file_selected)
+	add_child(_img_dialog)
 
 func _create_auth_ui() -> void:
 	if not _auth_dialog: return
@@ -454,17 +490,20 @@ func _gui_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if not _input_field or not _input_field.has_focus():
 		return
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ENTER:
-		if not event.shift_pressed:
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ENTER and not event.shift_pressed:
 			_send_message()
 			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_V and event.ctrl_pressed:
+			# Try to paste image from clipboard
+			_try_paste_clipboard_image()
 
 
 func _send_message() -> void:
 	if _is_streaming:
 		return
 	var text := _input_field.text.strip_edges()
-	if text == "" and _context_refs.is_empty():
+	if text == "" and _context_refs.is_empty() and _pending_images.is_empty():
 		return
 
 	# 构建上下文内容
@@ -486,12 +525,25 @@ func _send_message() -> void:
 	if full_context != "":
 		text = "--- Context References ---\n" + full_context + "\n--- User Question ---\n" + text
 
+	# 收集图片数据
+	var image_textures: Array = []
+	var image_base64s: Array = []
+	for img_item in _pending_images:
+		image_textures.append(img_item.texture)
+		image_base64s.append(img_item.base64)
+
+	# Vision 支持警告
+	if not image_base64s.is_empty():
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("vision_not_supported"))
+
 	_input_field.text = ""
-	_add_bubble(MessageBubble.Role.USER, text)
+	_add_bubble_with_images(MessageBubble.Role.USER, text, image_textures)
 	_messages.append({"role": "user", "content": text})
 	
 	_context_refs.clear()
 	_update_ref_list()
+	_pending_images.clear()
+	_update_img_preview()
 
 	_is_streaming = true
 	_send_btn.disabled = true
@@ -501,7 +553,7 @@ func _send_message() -> void:
 
 	if _bridge and _bridge.has_method("send_chat_to_agent"):
 		var api_key = _auth.get_api_key(_current_provider) if _auth else ""
-		_bridge.send_chat_to_agent(text, _on_bridge_response, false, _current_provider, _selected_model, api_key)
+		_bridge.send_chat_to_agent(text, _on_bridge_response, false, _current_provider, _selected_model, api_key, image_base64s)
 	elif _ai_client:
 		_ai_client.send_message(_messages)
 	else:
@@ -835,10 +887,10 @@ func _add_bubble(role: int, text: String) -> void:
 	_scroll_to_bottom()
 
 
-func _create_bubble(role: int, text: String) -> PanelContainer:
+func _create_bubble(role: int, text: String, images: Array = []) -> PanelContainer:
 	var bubble := PanelContainer.new()
 	bubble.set_script(MessageBubble)
-	bubble.setup(role, text)
+	bubble.setup(role, text, images)
 	return bubble
 
 
@@ -901,3 +953,97 @@ func _dump_tree(node: Node, depth: int) -> String:
 	for child in node.get_children():
 		line += _dump_tree(child, depth + 1)
 	return line
+
+
+# ======== 图片上传功能 ========
+
+func _add_bubble_with_images(role: int, text: String, images: Array = []) -> void:
+	var bubble := _create_bubble(role, text, images)
+	if _msg_list:
+		_msg_list.add_child(bubble)
+	_scroll_to_bottom()
+
+
+func _on_attach_image_pressed() -> void:
+	if _pending_images.size() >= MAX_IMAGE_COUNT:
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("too_many_images"))
+		return
+	_img_dialog.popup_centered()
+
+
+func _on_image_file_selected(path: String) -> void:
+	var img := Image.new()
+	var err = img.load(path)
+	if err != OK:
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "Failed to load image: " + path)
+		return
+	_add_image_from_godot_image(img)
+
+
+func _try_paste_clipboard_image() -> void:
+	var img := DisplayServer.clipboard_get_image()
+	if img == null or img.is_empty():
+		# No image in clipboard, let normal text paste proceed
+		return
+	# We have an image, consume the event to prevent text paste
+	get_viewport().set_input_as_handled()
+	_add_image_from_godot_image(img)
+
+
+func _add_image_from_godot_image(img: Image) -> void:
+	if _pending_images.size() >= MAX_IMAGE_COUNT:
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("too_many_images"))
+		return
+
+	# Encode to PNG for base64
+	var png_data := img.save_png_to_buffer()
+	var size_mb := png_data.size() / (1024.0 * 1024.0)
+	if size_mb > MAX_IMAGE_SIZE_MB:
+		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("image_too_large") % size_mb)
+		return
+
+	var base64_str := Marshalls.raw_to_base64(png_data)
+
+	# Create texture for preview
+	var tex := ImageTexture.create_from_image(img)
+
+	_pending_images.append({"base64": base64_str, "texture": tex})
+	_update_img_preview()
+
+
+func _update_img_preview() -> void:
+	if not _img_preview:
+		return
+	for c in _img_preview.get_children():
+		c.queue_free()
+	
+	_img_preview.visible = not _pending_images.is_empty()
+	
+	for i in range(_pending_images.size()):
+		var item = _pending_images[i]
+		var container := VBoxContainer.new()
+		container.add_theme_constant_override("separation", 2)
+		
+		# Thumbnail
+		var tex_rect := TextureRect.new()
+		tex_rect.texture = item.texture
+		tex_rect.custom_minimum_size = Vector2(60, 45)
+		tex_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		container.add_child(tex_rect)
+		
+		# Remove button
+		var remove_btn := Button.new()
+		remove_btn.text = "✕"
+		remove_btn.add_theme_font_size_override("font_size", 9)
+		remove_btn.tooltip_text = _tr("remove_image")
+		remove_btn.pressed.connect(_on_remove_image.bind(i))
+		container.add_child(remove_btn)
+		
+		_img_preview.add_child(container)
+
+
+func _on_remove_image(idx: int) -> void:
+	if idx < _pending_images.size():
+		_pending_images.remove_at(idx)
+		_update_img_preview()

@@ -1,13 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { Task, TaskStatus } from '../types/index.js';
+import { ensureKsanadockDirSync } from './project-data.js';
 
 export class TaskManager {
     private dir: string;
     private nextId: number = 1;
 
     constructor(projectRoot: string) {
-        this.dir = path.join(projectRoot, '.ksanadock', 'tasks');
+        const ksanadockDir = ensureKsanadockDirSync(projectRoot);
+        this.dir = path.join(ksanadockDir, 'tasks');
         if (!fs.existsSync(this.dir)) {
             fs.mkdirSync(this.dir, { recursive: true });
         }

@@ -34,9 +34,9 @@ async function main() {
 
     // Register handlers for incoming requests from Godot
     client.onMethod('chat', async (params: any) => {
-        const { message, active_scene, provider, model, api_key } = params;
+        const { message, active_scene, provider, model, api_key, images } = params;
         console.log('User Input:', message);
-        console.log(`Provider: ${provider}, Model: ${model}, Using specific API Key: ${!!api_key}`);
+        console.log(`Provider: ${provider}, Model: ${model}, Using specific API Key: ${!!api_key}, Images: ${images ? images.length : 0}`);
         
         agentLoop.updateConfig(provider, model, api_key);
         
@@ -45,8 +45,8 @@ async function main() {
             loopInitialized = true;
         }
 
-        // Push message to the long-running loop
-        agentLoop.pushMessage({ role: 'user', content: message });
+        // Push message to the long-running loop (with optional images)
+        agentLoop.pushMessage({ role: 'user', content: message }, images);
         
         return { type: 'text', content: 'Task received by Agent Loop...' };
     });

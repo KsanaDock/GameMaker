@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getBlockedGameArtifactReason } from './game-file-guard.js';
 
 export function registerFileTools(registry: any, projectRoot: string) {
     // 1. list_dir
@@ -79,6 +80,11 @@ export function registerFileTools(registry: any, projectRoot: string) {
             required: ['filePath', 'content']
         },
         handler: async (args: any) => {
+            const blockedReason = getBlockedGameArtifactReason(args.filePath || '');
+            if (blockedReason) {
+                return { error: blockedReason };
+            }
+
             const fullPath = path.resolve(projectRoot, args.filePath);
             if (!fullPath.startsWith(projectRoot)) {
                 return { error: 'Permission denied: path outside project root' };

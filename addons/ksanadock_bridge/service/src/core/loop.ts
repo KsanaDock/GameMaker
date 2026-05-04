@@ -1,11 +1,12 @@
 import axios from 'axios';
 import * as dotenv from 'dotenv';
-import type { Message } from '../types/index.js';
+import type { Message, ContentPart } from '../types/index.js';
 import type { ToolRegistry } from '../tools/tool-registry.js';
 import { getHierarchicalContext } from '../context/project-context.js';
 import { buildMemoryPrompt } from './memory-system.js';
 import { SessionStore } from '../memory/session-store.js';
 import type { BridgeClient } from '../client.js';
+import { isParallelSafeTool } from '../tools/tool-concurrency.js';
 
 dotenv.config();
 
@@ -61,12 +62,28 @@ When creating or organizing files, you MUST adhere to the standard directory str
 
 ## The Elite Architect's Mindset
 1. **Visual-First & MVP Priority**: ALWAYS prioritize visible gameplay over complex backend architecture. NEVER create "invisible" nodes. For image assets, you MUST use \`analyze_image\` to determine grid dimensions (rows/cols) and animation sequences (idle, walk, etc.) before slicing them into \`AtlasTexture\` or configuring \`hframes\`/\`vframes\`. Use \`ColorRect\` placeholders only if no assets are found. Avoid "Ghost Scripts".
-2. **Architecture First**: Always seek to understand the project structure and existing symbols before making changes. NEVER guess.
-3. **Master Planning**: Create a clear plan before starting implementation. For non-trivial requests, you MUST use the \`task_create\` tool to build a task list.
-4. **Phased Execution & Pausing (MANDATORY)**: NEVER implement a complex multi-step task in a single continuous loop. You MUST break the work into logical phases (e.g., "Phase 1: Basic Structure", "Phase 2: Core Logic"). After completing a phase, STOP calling tools. Output a plain text message detailing what you built, and explicitly ask the user to verify it in the Godot Editor or game runtime. Wait for the user's explicit approval or bug report before starting the next phase.
+2. **Architecture First**: Always seek to understand the project structure and existing symbols before making changes. Batch independent read-only discovery calls together when possible. NEVER guess.
+3. **Master Planning**: Create a clear plan before starting implementation. For non-trivial requests, you MUST use the \`task_create\` tool to build task-level steps within the current phase.
+4. **Phased Execution & Pausing (MANDATORY)**: Distinguish phases from tasks. A phase is a user-verifiable playable milestone; a task is an internal implementation step. Build one phase at a time, and each phase must end with a runnable game state. Phase 1 for a new game MUST be click-to-play: a valid main scene, visible player, camera, controls, at least one objective/threat, and no required editor setup. After completing a phase, STOP calling tools. Output what changed, what the user can play now, and ask the user to verify in Godot before continuing.
 5. **Skill-Driven**: Use available skills for complex, domain-specific tasks.
-6. **Verification**: Always verify your work through validation tools, tests, or dry runs before pausing.
+6. **Verification**: Verify the official playable project files. Do not create test scenes, test scripts, sample harnesses, or throwaway test folders. Use Godot headless validation, static scene/script inspection, and manual play instructions instead.
 7. **Communication**: ALWAYS explain your plan and reasoning in your message content (markdown) BEFORE or ALONGSIDE using any tools. NEVER send a message with tool calls but no content when starting or updating a task.
+
+## Playable Quality Gates
+- Every phase must leave \`project.godot\` with a valid \`run/main_scene\` that opens the intended playable scene or menu.
+- Do not expose debug/test buttons, \`scenes/test\`, \`scripts/test\`, \`test_scene.tscn\`, or \`ai_test_scene.tscn\` in user-facing game work.
+- If a script has exported PackedScene dependencies, the scene must assign them or the script must preload sane defaults.
+- If logic depends on groups such as \`player\`, \`enemy\`, or \`pickup\`, the corresponding scene roots must declare those groups.
+- Cameras used by gameplay must be current or made current in code, and gameplay code must guard against missing cameras.
+- Avoid placeholder \`pass\` functions in completed phase files unless the function is intentionally empty and documented by visible gameplay behavior.
+
+## Research-Augmented Game Development
+- When the user asks to create a new game, clone an existing genre, explore an unfamiliar mechanic, or build a non-trivial prototype, FIRST call \`collect_game_references\` before implementation.
+- Generate practical search angles yourself: gameplay loop, control feel, progression, camera, UI, Godot implementation, and open-source examples.
+- If the user explicitly asks for similar projects, code references, or GitHub examples, set \`cloneTopRepositories=true\` and keep \`maxRepositoriesToClone\` to 1 or 2 unless asked otherwise.
+- After collecting references, read the generated files under \`.ksanadock/references/\` and use them to shape the MVP plan.
+- External references are inspiration and context. Do not copy code, assets, shaders, music, or data into the game unless the license allows it and the user approves.
+- Store all web summaries and cloned reference projects only under \`.ksanadock/references/\`; never mix external reference code into \`res://addons/\`, \`res://scripts/\`, or \`res://assets/\` directly.
 
 Available Subagents:
 - code-reviewer: Independent code review and architecture analysis
@@ -139,10 +156,32 @@ Available Subagents:
         return this.history.filter(m => m.role !== 'system');
     }
 
-    public pushMessage(msg: Message) {
+    public pushMessage(msg: Message, images?: string[]) {
+        if (images && images.length > 0) {
+            msg = this.buildMultimodalMessage(msg, images);
+        }
         this.messageQueue.push(msg);
         // Pre-emptive save of the incoming message if added to history directly later
         this.wakeup();
+    }
+
+    private buildMultimodalMessage(msg: Message, images: string[]): Message {
+        const textContent = typeof msg.content === 'string' ? msg.content : '';
+        const parts: ContentPart[] = [
+            { type: 'text', text: textContent }
+        ];
+        for (const base64Data of images) {
+            // Detect mime type from base64 header or default to png
+            let dataUrl = base64Data;
+            if (!dataUrl.startsWith('data:')) {
+                dataUrl = `data:image/png;base64,${base64Data}`;
+            }
+            parts.push({
+                type: 'image_url',
+                image_url: { url: dataUrl }
+            });
+        }
+        return { ...msg, content: parts };
     }
 
     private wakeup() {
@@ -246,31 +285,9 @@ Available Subagents:
                         this.client.sendNotification('agent_reply', { text: message.content });
                     }
 
-                    for (const toolCall of message.tool_calls as any[]) {
-                        const name = toolCall.function.name;
-                        const args = JSON.parse(toolCall.function.arguments);
-                        console.log(`[AgentLoop Executing] ${name}`);
-                        
-                        this.client.sendNotification('agent_event', { type: 'tool_execution', message: `Running ${name}...` });
-
-                        try {
-                            const result = await this.toolRegistry.execute(name, args);
-                            this.history.push({
-                                role: 'tool',
-                                tool_call_id: toolCall.id,
-                                name: name,
-                                content: typeof result === 'string' ? result : JSON.stringify(result)
-                            });
-                        } catch(err: any) {
-                            this.history.push({
-                                role: 'tool',
-                                tool_call_id: toolCall.id,
-                                name: name,
-                                content: `Error executing ${name}: ${err.message}`
-                            });
-                        }
-                        await this.saveCurrentSession();
-                    }
+                    const toolResults = await this.executeToolCalls(message.tool_calls as any[]);
+                    this.history.push(...toolResults);
+                    await this.saveCurrentSession();
                     // Loop continues automatically because history now ends with role: 'tool'
                 } else if (message.content) {
                     // Final text response
@@ -289,6 +306,73 @@ Available Subagents:
             await this.saveCurrentSession();
             this.client.sendNotification('agent_event', { type: 'process_end', message: 'Agent idle.' });
             this.isRunning = false;
+        }
+    }
+
+    private async executeToolCalls(toolCalls: any[]): Promise<Message[]> {
+        const results: Message[] = [];
+        let readOnlyBatch: any[] = [];
+
+        const flushReadOnlyBatch = async () => {
+            if (readOnlyBatch.length === 0) return;
+            const batch = readOnlyBatch;
+            readOnlyBatch = [];
+            if (batch.length > 1) {
+                this.client.sendNotification('agent_event', {
+                    type: 'tool_execution',
+                    message: `Running ${batch.length} read-only tools in parallel...`
+                });
+            }
+            results.push(...await Promise.all(batch.map(toolCall => this.executeSingleToolCall(toolCall))));
+        };
+
+        for (const toolCall of toolCalls) {
+            const name = toolCall?.function?.name || '';
+            if (isParallelSafeTool(name)) {
+                readOnlyBatch.push(toolCall);
+            } else {
+                await flushReadOnlyBatch();
+                results.push(await this.executeSingleToolCall(toolCall));
+            }
+        }
+
+        await flushReadOnlyBatch();
+        return results;
+    }
+
+    private async executeSingleToolCall(toolCall: any): Promise<Message> {
+        const name = toolCall?.function?.name || 'unknown_tool';
+        let args: any = {};
+
+        try {
+            args = JSON.parse(toolCall?.function?.arguments || '{}');
+        } catch (err: any) {
+            return {
+                role: 'tool',
+                tool_call_id: toolCall?.id || '',
+                name,
+                content: `Error parsing arguments for ${name}: ${err.message}`
+            };
+        }
+
+        console.log(`[AgentLoop Executing] ${name}`);
+        this.client.sendNotification('agent_event', { type: 'tool_execution', message: `Running ${name}...` });
+
+        try {
+            const result = await this.toolRegistry.execute(name, args);
+            return {
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                name,
+                content: typeof result === 'string' ? result : JSON.stringify(result)
+            };
+        } catch(err: any) {
+            return {
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                name,
+                content: `Error executing ${name}: ${err.message}`
+            };
         }
     }
 

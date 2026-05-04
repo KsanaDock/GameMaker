@@ -27,6 +27,14 @@ $ARGUMENTS
 
 ## Workflow
 
+## Game Development Rules
+
+- Build user-facing playable phases, not private test harnesses.
+- Do not create `test` folders, `test_scene.tscn`, `ai_test_scene.tscn`, `*_test.gd`, debug-only menu buttons, or sample scenes for AI validation.
+- Validate the official game scenes/scripts directly with Godot headless checks and static inspection.
+- Phase 1 for a new game must be immediately playable from `run/main_scene`: valid main scene, visible player, camera, controls, at least one threat/objective, and no required editor setup.
+- Before reporting a phase complete, confirm scripts are mounted, exported PackedScene dependencies are assigned, required groups are set, and the main scene path is valid.
+
 1. **Analyze the task** — read the task's **Targets** to determine what to generate:
    - `scenes/*.tscn` targets → generate scene builder(s)
    - `scripts/*.gd` targets → generate runtime script(s)
@@ -60,19 +68,19 @@ You MUST execute work in **logical phases**. After you complete a functional chu
 3. Include the following sections in your message:
    - **Modified files:** List of all files created or updated.
    - **Phase Summary:** Brief summary of what was built.
-   - **Testing Instructions:** Explicitly ask the user to run the game or open the scene in the Godot Editor to verify your work.
+   - **Play Instructions:** Explicitly ask the user to run the official main scene or open the relevant production scene in Godot to verify your work.
 4. **Wait for user approval** ("ok", "continue") before starting the next phase.
 
 **MVP & Architecture Rule (Anti-Overengineering):**
 - **CORE FIRST**: Focus exclusively on core gameplay loops and visual feedback in early phases.
 - **NO GHOST SCRIPTS**: Do not create placeholder scripts for systems (e.g., "WeatherSystem", "AchievementSystem") unless they are actively being integrated into the current scene in this phase. 
-- **SHOW, DON'T JUST HIDE**: Ensure the user can *see* and *test* the change. A purely "backend" logic change is discouraged unless it fixes a reported bug.
+- **SHOW, DON'T JUST HIDE**: Ensure the user can *see* and *play* the change. A purely "backend" logic change is discouraged unless it fixes a reported bug.
 
 **Handling User Feedback (Runtime Errors):**
 If the user replies with a block of text containing `Error`, `Stack Trace`, or mentions a crash/bug, this is a **Runtime Error** from the Godot Engine.
 - DO NOT start new features.
 - IMMEDIATELY use `grep_search` to find the failing script or variable.
-- Fix the bug, validate via headless, and ask the user to test again.
+- Fix the bug, validate via headless, and ask the user to play the official scene again.
 
 ## Commands
 

@@ -3,7 +3,7 @@ extends PanelContainer
 ## 单条聊天消息气泡 — Cursor/ChatGPT 极简暗黑风 V2
 ## 核心原则：AI 无背景直出文本，User 纯卡片无边框，Tool 内联轻量化
 
-enum Role { AI, USER, PLAN, SYSTEM_EVENT, TOOL_EXEC, SUBAGENT, FILE_DIFF }
+enum Role {AI, USER, PLAN, SYSTEM_EVENT, TOOL_EXEC, SUBAGENT, FILE_DIFF}
 signal plan_approved(auto_run: bool)
 signal file_change_reviewed(file_path: String, accepted: bool)
 
@@ -11,18 +11,17 @@ var _role: Role = Role.AI
 var _content_label: RichTextLabel
 var _subagent_logs_container: VBoxContainer
 var _subagent_header_btn: Button
-var _tool_collapsed := true  # 工具日志默认折叠
-var _tool_detail_container: VBoxContainer  # 工具日志展开后的详情
-
+var _tool_detail_container: VBoxContainer
+var _tool_collapsed: bool = true
 
 func _ready() -> void:
 	# 由父级调用 setup() 初始化，不在 _ready 中构建
 	pass
 
 
-func setup(role: Role, text: String) -> void:
+func setup(role: Role, text: String, images: Array = []) -> void:
 	_role = role
-	_build(text)
+	_build(text, images)
 
 
 func setup_plan(title: String, steps: Array) -> void:
@@ -56,7 +55,8 @@ func get_full_text() -> String:
 	return ""
 
 
-func _build(text: String) -> void:
+func _build(text: String, images: Array = []) -> void:
+	# 清理旧子节点
 	for c in get_children():
 		c.queue_free()
 
@@ -137,6 +137,28 @@ func _build(text: String) -> void:
 	_content_label.add_theme_font_size_override("normal_font_size", 14)
 	_content_label.text = _format_text(text)
 	hbox.add_child(_content_label)
+
+	# ── 图片附件显示 ──
+	if not images.is_empty():
+		var img_container := HBoxContainer.new()
+		img_container.add_theme_constant_override("separation", 4)
+		for img_data in images:
+			var tex_rect := TextureRect.new()
+			tex_rect.custom_minimum_size = Vector2(120, 90)
+			tex_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			# img_data is an ImageTexture passed from chat.gd
+			if img_data is ImageTexture:
+				tex_rect.texture = img_data
+			img_container.add_child(tex_rect)
+		# Insert images after the content in a VBox wrapper
+		var content_vbox := VBoxContainer.new()
+		content_vbox.add_theme_constant_override("separation", 6)
+		# Re-parent the hbox content into vbox
+		bubble_panel.remove_child(hbox)
+		content_vbox.add_child(hbox)
+		content_vbox.add_child(img_container)
+		bubble_panel.add_child(content_vbox)
 
 
 ## 构建工具执行日志 — 极简内联行（无Panel/无背景/无边框）

@@ -6,6 +6,7 @@ import { registerPlanningTools } from './planning-tools.js';
 import { registerSubagentTools } from './subagent-tools.js';
 import { registerSymbolTools } from './symbol-tools.js';
 import { registerVisionTools } from './vision-tools.js';
+import { registerResearchTools } from './research-tools.js';
 
 export function setupTools(client: BridgeClient, projectRoot: string): ToolRegistry {
     const registry = new ToolRegistry();
@@ -15,5 +16,6 @@ export function setupTools(client: BridgeClient, projectRoot: string): ToolRegis
     registerSubagentTools(registry, projectRoot, client);
     registerSymbolTools(registry, projectRoot);
     registerVisionTools(registry, projectRoot);
+    registerResearchTools(registry, projectRoot);
     return registry;
 }

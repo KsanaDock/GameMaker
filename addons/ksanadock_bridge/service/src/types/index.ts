@@ -7,9 +7,21 @@ export interface ToolCall {
     };
 }
 
+export interface ImageContentPart {
+    type: 'image_url';
+    image_url: { url: string };
+}
+
+export interface TextContentPart {
+    type: 'text';
+    text: string;
+}
+
+export type ContentPart = TextContentPart | ImageContentPart;
+
 export interface Message {
     role: 'system' | 'user' | 'assistant' | 'tool';
-    content: string | null;
+    content: string | null | ContentPart[];
     name?: string;
     tool_calls?: ToolCall[];
     tool_call_id?: string;

@@ -1,11 +1,13 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { ensureKsanadockDirSync } from '../core/project-data.js';
 
 export class SessionStore {
     private sessionPath: string;
 
     constructor(projectRoot: string) {
-        this.sessionPath = path.join(projectRoot, '.ksanadock', 'sessions');
+        const ksanadockDir = ensureKsanadockDirSync(projectRoot);
+        this.sessionPath = path.join(ksanadockDir, 'sessions');
     }
 
     async saveSession(sessionId: string, history: any[]) {

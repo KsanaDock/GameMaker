@@ -35,6 +35,14 @@
 		"openrouter_key": "OpenRouter API Key",
 		"settings_save": "保存设置",
 		"tool_executing": "正在执行: [b]%s[/b](%s)",
-		"tool_result": "[b]%s[/b] 的执行结果:\n%s"
+		"tool_result": "[b]%s[/b] 的执行结果:\n%s",
+		"attach_image": "添加图片",
+		"image_attached": "已添加 %d 张图片",
+		"paste_image": "粘贴截图",
+		"remove_image": "移除图片",
+		"image_too_large": "图片过大（%.1f MB），最大支持 4 MB",
+		"too_many_images": "最多同时附加 3 张图片",
+		"vision_not_supported": "当前模型可能不支持图片分析，发送可能失败。如遇报错请更换支持 Vision 的模型。",
+		"no_image_in_clipboard": "剪切板中没有找到图片"
 	}
 }

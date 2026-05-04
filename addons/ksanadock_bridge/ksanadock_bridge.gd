@@ -187,7 +187,7 @@ func is_agent_connected() -> bool:
 
 
 ## UI API
-func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = false, provider: String = "", model: String = "", api_key: String = "") -> void:
+func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = false, provider: String = "", model: String = "", api_key: String = "", images: Array = []) -> void:
 	# If agent isn't connected yet, wait up to 15 seconds for it to come online
 	if _clients.is_empty():
 		var waited := 0.0
@@ -208,17 +208,21 @@ func send_chat_to_agent(message: String, callback: Callable, auto_run: bool = fa
 	if root:
 		active_scene = root.scene_file_path
 		
+	var params = {
+		"message": message,
+		"autoRun": auto_run,
+		"active_scene": active_scene,
+		"provider": provider,
+		"model": model,
+		"api_key": api_key
+	}
+	if not images.is_empty():
+		params["images"] = images
+	
 	var request = {
 		"jsonrpc": "2.0",
 		"method": "chat",
-		"params": {
-			"message": message,
-			"autoRun": auto_run,
-			"active_scene": active_scene,
-			"provider": provider,
-			"model": model,
-			"api_key": api_key
-		},
+		"params": params,
 		"id": req_id
 	}
 	_clients[0].send_text(JSON.stringify(request))

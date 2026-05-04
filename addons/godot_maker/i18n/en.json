@@ -35,6 +35,14 @@
 		"openrouter_key": "OpenRouter API Key",
 		"settings_save": "Save Settings",
 		"tool_executing": "Executing: [b]%s[/b](%s)",
-		"tool_result": "Result of [b]%s[/b]:\n%s"
+		"tool_result": "Result of [b]%s[/b]:\n%s",
+		"attach_image": "Add Image",
+		"image_attached": "%d image(s) attached",
+		"paste_image": "Paste Screenshot",
+		"remove_image": "Remove Image",
+		"image_too_large": "Image too large (%.1f MB), maximum is 4 MB",
+		"too_many_images": "Maximum 3 images at a time",
+		"vision_not_supported": "Current model may not support image analysis. If you get an error, switch to a Vision-capable model.",
+		"no_image_in_clipboard": "No image found in clipboard"
 	}
 }
