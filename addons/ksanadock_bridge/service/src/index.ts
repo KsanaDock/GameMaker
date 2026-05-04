@@ -4,6 +4,7 @@ import { BridgeClient } from './client.js';
 import { AgentLoop } from './core/loop.js';
 import { setupTools } from './tools/index.js';
 import { SkillManager } from './skills/skill-manager.js';
+import { TaskManager } from './core/task_manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +60,17 @@ async function main() {
             loopInitialized = true;
         }
         return agentLoop.getHistory();
+    });
+
+    client.onMethod('check_unfinished_tasks', async () => {
+        const loopUnfinished = agentLoop.hasUnfinishedTasks();
+        const tm = new TaskManager(projectRoot);
+        const tasks = tm.getUnfinishedTasks();
+        return {
+            has_unfinished: loopUnfinished || tasks.length > 0,
+            task_count: tasks.length,
+            loop_unfinished: loopUnfinished
+        };
     });
 
     try {

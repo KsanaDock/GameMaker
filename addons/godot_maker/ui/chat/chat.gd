@@ -658,6 +658,21 @@ func _add_plan_bubble(data: Dictionary, tool_call_id: String) -> void:
 	_scroll_to_bottom()
 
 
+func _add_resume_prompt_bubble(task_count: int) -> void:
+	var bubble := PanelContainer.new()
+	bubble.set_script(MessageBubble)
+	bubble.setup_resume_prompt(task_count)
+	_msg_list.add_child(bubble)
+	bubble.resume_requested.connect(_on_resume_requested.bind(bubble))
+	_scroll_to_bottom()
+
+
+func _on_resume_requested(bubble: Node) -> void:
+	bubble.queue_free()
+	var msg = "继续执行之前的任务"
+	_send_direct_message(msg, true)
+
+
 func _on_plan_approved(auto_run: bool) -> void:
 	var msg = _tr("plan_full") if auto_run else _tr("plan_step")
 	_send_direct_message(msg, auto_run)
@@ -721,6 +736,16 @@ func _on_agent_connected() -> void:
 	print("[GodotMaker] Agent connected signal received in Chat UI. Requesting history...")
 	if _bridge and _bridge.has_method("get_agent_history"):
 		_bridge.get_agent_history(_render_history)
+	
+	# 新增：检查是否有未完成的任务
+	if _bridge and _bridge.has_method("call_agent_method"):
+		_bridge.call_agent_method("check_unfinished_tasks", {}, _on_tasks_checked)
+
+
+func _on_tasks_checked(result: Dictionary) -> void:
+	if result.has("error"): return
+	if result.get("has_unfinished", false):
+		_add_resume_prompt_bubble(result.get("task_count", 0))
 
 
 func _render_history(history_data: Variant) -> void:

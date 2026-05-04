@@ -3,9 +3,10 @@ extends PanelContainer
 ## 单条聊天消息气泡 — Cursor/ChatGPT 极简暗黑风 V2
 ## 核心原则：AI 无背景直出文本，User 纯卡片无边框，Tool 内联轻量化
 
-enum Role {AI, USER, PLAN, SYSTEM_EVENT, TOOL_EXEC, SUBAGENT, FILE_DIFF}
+enum Role {AI, USER, PLAN, SYSTEM_EVENT, TOOL_EXEC, SUBAGENT, FILE_DIFF, RESUME_PROMPT}
 signal plan_approved(auto_run: bool)
 signal file_change_reviewed(file_path: String, accepted: bool)
+signal resume_requested()
 
 var _role: Role = Role.AI
 var _content_label: RichTextLabel
@@ -36,6 +37,11 @@ func setup_subagent(title: String) -> void:
 func setup_file_diff(file_path: String, content: String) -> void:
 	_role = Role.FILE_DIFF
 	_build_file_diff(file_path, content)
+
+
+func setup_resume_prompt(task_count: int) -> void:
+	_role = Role.RESUME_PROMPT
+	_build_resume_prompt(task_count)
 
 
 func append_text(chunk: String) -> void:
@@ -239,7 +245,11 @@ func _build_tool_inline(text: String) -> void:
 	detail_label.custom_minimum_size.x = 1
 	detail_label.add_theme_color_override("default_color", Color("#777777"))
 	detail_label.add_theme_font_size_override("normal_font_size", 11)
-	detail_label.text = "[i]" + _format_text(text) + "[/i]"
+	var detail_text = text.strip_edges()
+	if detail_text.length() > 1500:
+		detail_text = detail_text.left(1500) + "\n... (Content truncated due to UI limits)"
+
+	detail_label.text = "[i]" + _format_text(detail_text) + "[/i]"
 	detail_margin.add_child(detail_label)
 
 	# 折叠切换逻辑
@@ -503,6 +513,89 @@ func _build_file_diff(file_path: String, content: String) -> void:
 	)
 
 
+func _build_resume_prompt(task_count: int) -> void:
+	for c in get_children(): c.queue_free()
+
+	# 恢复提示气泡样式：深紫调暗色，表示提醒
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#1e1e2e") 
+	sb.border_color = KPalette.EMERALD
+	sb.border_width_left = 4
+	sb.corner_radius_top_right = KPalette.RADIUS_MD
+	sb.corner_radius_bottom_right = KPalette.RADIUS_MD
+	sb.content_margin_top = 16
+	sb.content_margin_bottom = 16
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	add_theme_stylebox_override("panel", sb)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	add_child(vbox)
+
+	# 标题区
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	vbox.add_child(head)
+
+	var icon := Label.new()
+	icon.text = "🕒"
+	head.add_child(icon)
+
+	var title := Label.new()
+	title.text = "发现未完成的任务"
+	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_color_override("font_color", KPalette.TEXT_PRIMARY)
+	head.add_child(title)
+
+	# 描述区
+	var desc := RichTextLabel.new()
+	desc.bbcode_enabled = true
+	desc.fit_content = true
+	desc.scroll_active = false
+	desc.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc.add_theme_font_size_override("normal_font_size", 13)
+	desc.add_theme_color_override("default_color", KPalette.TEXT_DIM)
+	
+	var msg = "您上次退出时还有一些任务正在进行中。"
+	if task_count > 0:
+		msg += "\n当前有 [b]%d[/b] 个任务处于待办或进行中状态。" % task_count
+	msg += "\n是否现在继续执行？"
+	
+	desc.text = msg
+	vbox.add_child(desc)
+
+	# 按钮区
+	var btn_hbox := HBoxContainer.new()
+	btn_hbox.add_theme_constant_override("separation", 12)
+	vbox.add_child(btn_hbox)
+
+	var btn_ignore := Button.new()
+	btn_ignore.text = "暂时忽略"
+	btn_ignore.add_theme_stylebox_override("normal", KPalette.btn_ghost())
+	btn_ignore.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
+	btn_hbox.add_child(btn_ignore)
+
+	var btn_resume := Button.new()
+	btn_resume.text = "继续执行任务"
+	btn_resume.add_theme_stylebox_override("normal", KPalette.btn_primary())
+	btn_resume.add_theme_stylebox_override("hover", KPalette.btn_primary_hover())
+	btn_hbox.add_child(btn_resume)
+
+	btn_resume.pressed.connect(func():
+		_disable_btns(btn_hbox)
+		btn_resume.text = "正在恢复..."
+		resume_requested.emit()
+	)
+	
+	btn_ignore.pressed.connect(func():
+		_disable_btns(btn_hbox)
+		queue_free()
+	)
+
+
 func _disable_btns(parent: Control) -> void:
 	for c in parent.get_children():
 		if c is Button:
@@ -521,7 +614,8 @@ func _format_text(raw: String) -> String:
 		var lang := m.get_string(1)
 		var code := m.get_string(2).strip_edges()
 		var header := "[font_size=10][color=#94a3b8]%s[/color][/font_size]\n" % lang if lang != "" else ""
-		result = result.replace(m.get_string(), "\n%s[indent][code]%s[/code][/indent]\n" % [header, code])
+		# Use bgcolor and color to simulate code block without disabling word-wrap
+		result = result.replace(m.get_string(), "\n%s[indent][color=#a3be8c]%s[/color][/indent]\n" % [header, code])
 
 	# 2. 逐行处理（标题、列表、分割线）
 	var lines := result.split("\n")
@@ -552,7 +646,8 @@ func _format_text(raw: String) -> String:
 	inline_regex.compile("`([^`]+)`")
 	var inline_matches := inline_regex.search_all(result)
 	for m in inline_matches:
-		result = result.replace(m.get_string(), "[code]%s[/code]" % m.get_string(1))
+		# Use bgcolor and color to simulate inline code without disabling word-wrap
+		result = result.replace(m.get_string(), "[bgcolor=#1a1a1a][color=#38bdf8] %s [/color][/bgcolor]" % m.get_string(1))
 
 	# 加粗 **...**
 	var bold_regex := RegEx.new()

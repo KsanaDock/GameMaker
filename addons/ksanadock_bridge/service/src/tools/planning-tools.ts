@@ -9,18 +9,73 @@ function getTasks(projectRoot: string) {
 
 export function registerPlanningTools(registry: any, projectRoot: string) {
     registry.register({
+        name: 'phase_create',
+        description: 'Create a new development phase (milestone). Use this to define high-level playable goals before creating individual tasks.',
+        parameters: {
+            type: 'object',
+            properties: {
+                name: { type: 'string', description: 'Name of the phase (e.g., "Phase 1: MVP").' },
+                description: { type: 'string', description: 'What this phase accomplishes for the player.' }
+            },
+            required: ['name']
+        },
+        handler: async (args: any) => {
+            return getTasks(projectRoot).phaseCreate(args.name, args.description || '');
+        }
+    });
+
+    registry.register({
+        name: 'phase_update',
+        description: 'Update the status of a development phase.',
+        parameters: {
+            type: 'object',
+            properties: {
+                phase_id: { type: 'number', description: 'The ID of the phase to update.' },
+                status: { type: 'string', enum: ['pending', 'in_progress', 'completed'], description: 'The new status.' }
+            },
+            required: ['phase_id', 'status']
+        },
+        handler: async (args: any) => {
+            return getTasks(projectRoot).phaseUpdate(args.phase_id, args.status);
+        }
+    });
+
+    registry.register({
+        name: 'phase_list',
+        description: 'List all development phases.',
+        parameters: { type: 'object', properties: {}, required: [] },
+        handler: async () => {
+            return getTasks(projectRoot).phaseList();
+        }
+    });
+
+    registry.register({
+        name: 'phase_get',
+        description: 'Get details of a specific phase.',
+        parameters: {
+            type: 'object',
+            properties: { phase_id: { type: 'number' } },
+            required: ['phase_id']
+        },
+        handler: async (args: any) => {
+            return getTasks(projectRoot).phaseGet(args.phase_id);
+        }
+    });
+
+    registry.register({
         name: 'task_create',
         description: 'Create a new persistent task in the DAG. Use this to break down complex goals into tracking steps.',
         parameters: {
             type: 'object',
             properties: {
                 subject: { type: 'string', description: 'Brief title of the task (e.g., "Build Character Controller").' },
-                description: { type: 'string', description: 'Detailed intention or scripts to modify.' }
+                description: { type: 'string', description: 'Detailed intention or scripts to modify.' },
+                phase_id: { type: 'number', description: 'Optional phase ID to associate this task with.' }
             },
             required: ['subject']
         },
         handler: async (args: any) => {
-            return getTasks(projectRoot).create(args.subject, args.description || '');
+            return getTasks(projectRoot).create(args.subject, args.description || '', args.phase_id);
         }
     });
 

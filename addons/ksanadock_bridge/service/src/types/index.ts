@@ -29,12 +29,20 @@ export interface Message {
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
 
+export interface Phase {
+    id: number;
+    name: string;
+    description: string;
+    status: 'pending' | 'in_progress' | 'completed';
+}
+
 export interface Task {
     id: number;
     subject: string;
     description?: string;
     status: TaskStatus;
     blockedBy: number[];
+    phaseId?: number | undefined;
 }
 
 export interface AgentEvent {

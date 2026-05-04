@@ -63,8 +63,8 @@ When creating or organizing files, you MUST adhere to the standard directory str
 ## The Elite Architect's Mindset
 1. **Visual-First & MVP Priority**: ALWAYS prioritize visible gameplay over complex backend architecture. NEVER create "invisible" nodes. For image assets, you MUST use \`analyze_image\` to determine grid dimensions (rows/cols) and animation sequences (idle, walk, etc.) before slicing them into \`AtlasTexture\` or configuring \`hframes\`/\`vframes\`. Use \`ColorRect\` placeholders only if no assets are found. Avoid "Ghost Scripts".
 2. **Architecture First**: Always seek to understand the project structure and existing symbols before making changes. Batch independent read-only discovery calls together when possible. NEVER guess.
-3. **Master Planning**: Create a clear plan before starting implementation. For non-trivial requests, you MUST use the \`task_create\` tool to build task-level steps within the current phase.
-4. **Phased Execution & Pausing (MANDATORY)**: Distinguish phases from tasks. A phase is a user-verifiable playable milestone; a task is an internal implementation step. Build one phase at a time, and each phase must end with a runnable game state. Phase 1 for a new game MUST be click-to-play: a valid main scene, visible player, camera, controls, at least one objective/threat, and no required editor setup. After completing a phase, STOP calling tools. Output what changed, what the user can play now, and ask the user to verify in Godot before continuing.
+3. **Master Planning**: Create a clear plan before starting implementation. For non-trivial requests, you MUST use the \`phase_create\` tool to define your milestone, then use \`task_create\` with the resulting \`phase_id\` to build task-level steps.
+4. **Phased Execution & Pausing (MANDATORY)**: Distinguish phases from tasks. A phase is a user-verifiable playable milestone; a task is an internal implementation step. Build one phase at a time, and each phase must end with a runnable game state. Phase 1 for a new game MUST be click-to-play: a valid main scene, visible player, camera, controls, at least one objective/threat, and no required editor setup. After completing a phase, update its status using \`phase_update\`, then STOP calling tools. Output what changed, what the user can play now, and ask the user to verify in Godot before continuing to the next phase.
 5. **Skill-Driven**: Use available skills for complex, domain-specific tasks.
 6. **Verification**: Verify the official playable project files. Do not create test scenes, test scripts, sample harnesses, or throwaway test folders. Use Godot headless validation, static scene/script inspection, and manual play instructions instead.
 7. **Communication**: ALWAYS explain your plan and reasoning in your message content (markdown) BEFORE or ALONGSIDE using any tools. NEVER send a message with tool calls but no content when starting or updating a task.
@@ -154,6 +154,20 @@ Available Subagents:
     public getHistory() {
         // Only return user/assistant/tool messages for UI rendering
         return this.history.filter(m => m.role !== 'system');
+    }
+
+    public hasUnfinishedTasks(): boolean {
+        if (this.history.length <= 1) return false;
+        const lastMsg = this.history[this.history.length - 1];
+        if (!lastMsg) return false;
+        
+        // 1. 如果最后一条消息不是 assistant，说明 AI 还没说完（可能是 user 刚发，或者是 tool 刚返回结果）
+        if (lastMsg.role !== 'assistant') return true;
+        
+        // 2. 如果最后一条是 assistant 但带有 tool_calls，说明正在等待工具执行
+        if (lastMsg.role === 'assistant' && lastMsg.tool_calls && lastMsg.tool_calls.length > 0) return true;
+        
+        return false;
     }
 
     public pushMessage(msg: Message, images?: string[]) {
@@ -288,6 +302,14 @@ Available Subagents:
                     const toolResults = await this.executeToolCalls(message.tool_calls as any[]);
                     this.history.push(...toolResults);
                     await this.saveCurrentSession();
+
+                    // Pause execution if the agent completed a phase
+                    const shouldPause = (message.tool_calls as any[]).some((tc: any) => tc?.function?.name === 'phase_update' && tc?.function?.arguments?.includes('"completed"'));
+                    if (shouldPause) {
+                        this.client.sendNotification('agent_event', { type: 'system_notification', message: 'Phase completed. Paused for user review.' });
+                        break;
+                    }
+
                     // Loop continues automatically because history now ends with role: 'tool'
                 } else if (message.content) {
                     // Final text response
