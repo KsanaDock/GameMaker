@@ -7,12 +7,14 @@ import { buildMemoryPrompt } from './memory-system.js';
 import { SessionStore } from '../memory/session-store.js';
 import type { BridgeClient } from '../client.js';
 import { isParallelSafeTool } from '../tools/tool-concurrency.js';
+import { LLMRouter } from './llm-router.js';
 
 dotenv.config();
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const SILICONFLOW_API_KEY = process.env.SILICONFLOW_API_KEY;
 const XIAOMI_API_KEY = process.env.XIAOMI_API_KEY;
+const ZAI_API_KEY = process.env.ZAI_API_KEY;
 const MODEL = process.env.MODEL || 'deepseek/deepseek-v4-flash';
 
 export class AgentLoop {
@@ -404,24 +406,12 @@ Available Subagents:
 
     private async callLLM(retries = 3) {
         const tools = this.toolRegistry.getToolDefinitions();
+        const route = LLMRouter.getRoute(this.currentProvider, this.currentApiKey);
 
-        let url = 'https://openrouter.ai/api/v1/chat/completions';
-        let apiKey = this.currentApiKey || process.env.OPENROUTER_API_KEY;
-
-        if (this.currentProvider === 'siliconflow') {
-            url = 'https://api.siliconflow.cn/v1/chat/completions';
-            apiKey = this.currentApiKey || process.env.SILICONFLOW_API_KEY;
-        } else if (this.currentProvider === 'xiaomi') {
-            const isTokenPlan = apiKey && apiKey.startsWith('tp-');
-            url = isTokenPlan 
-                ? 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions'
-                : 'https://api.xiaomimimo.com/v1/chat/completions';
-            apiKey = this.currentApiKey || process.env.XIAOMI_API_KEY;
-        }
         for (let i = 0; i < retries; i++) {
             try {
                 const res = await axios.post(
-                    url,
+                    route.url,
                     {
                         model: this.currentModel,
                         messages: this.history,
@@ -429,12 +419,7 @@ Available Subagents:
                         tool_choice: tools.length > 0 ? 'auto' : undefined
                     },
                     {
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'HTTP-Referer': 'https://github.com/ksanadock/godotmaker',
-                            'X-Title': 'KsanaDock Loop Engine',
-                            'Content-Type': 'application/json'
-                        },
+                        headers: route.headers,
                         timeout: 120000 // 120s timeout
                     }
                 );

@@ -38,6 +38,8 @@ signal api_key_saved
 @onready var _sf_eye_btn: Button = %SFEyeBtn
 @onready var _or_eye_btn: Button = %OREyeBtn
 @onready var _xm_eye_btn: Button = %XMEyeBtn
+@onready var _zai_input: LineEdit = %ZAIMiMoInput
+@onready var _zai_eye_btn: Button = %ZAIEyeBtn
 var _connect_ksanadock_btn: Button
 var _messages: Array[Dictionary] = []  # {role, content}
 var _current_bubble: PanelContainer = null
@@ -99,6 +101,9 @@ func _load_persisted_state() -> void:
 	elif saved_provider == "xiaomi":
 		if _provider_btn: _provider_btn.select(3)
 		_current_provider = "xiaomi"
+	elif saved_provider == "zai":
+		if _provider_btn: _provider_btn.select(4)
+		_current_provider = "zai"
 		
 	if _current_provider != "":
 		var key = _auth.get_api_key(_current_provider) if _auth else ""
@@ -319,6 +324,17 @@ func _create_auth_ui() -> void:
 	
 	if not _start_btn.pressed.is_connected(_on_start_pressed):
 		_start_btn.pressed.connect(_on_start_pressed)
+	
+	if not _sf_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
+		_sf_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_sf_input))
+	if not _or_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
+		_or_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_or_input))
+	if not _xm_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
+		_xm_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_xm_input))
+	if not _zai_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
+		_zai_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_zai_input))
+	if not _api_key_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
+		_api_key_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_api_key_input))
 		
 	if _provider_btn:
 		_provider_btn.clear()
@@ -327,6 +343,7 @@ func _create_auth_ui() -> void:
 		_provider_btn.add_item("硅基流动 (SiliconFlow)", 1)
 		_provider_btn.add_item("OpenRouter", 2)
 		_provider_btn.add_item("小米 (Xiaomi MiMo)", 3)
+		_provider_btn.add_item("智谱 (Z.ai)", 4)
 		
 		# Remove radio circles from popup items
 		var popup = _provider_btn.get_popup()
@@ -347,6 +364,8 @@ func _on_provider_selected(index: int) -> void:
 		_current_provider = "openrouter"
 	elif index == 3:
 		_current_provider = "xiaomi"
+	elif index == 4:
+		_current_provider = "zai"
 	else:
 		return
 	
@@ -370,6 +389,9 @@ func _on_auth_custom_action(action: String) -> void:
 func _on_start_pressed() -> void:
 	_auth_dialog.popup_centered()
 
+func _on_eye_btn_pressed(input: LineEdit) -> void:
+	input.secret = not input.secret
+
 func _on_api_key_choice() -> void:
 	_api_key_dialog.popup_centered()
 
@@ -392,24 +414,31 @@ func _open_settings() -> void:
 		_sf_input.text = _auth.get_api_key("siliconflow")
 		_or_input.text = _auth.get_api_key("openrouter")
 		_xm_input.text = _auth.get_api_key("xiaomi")
+		_zai_input.text = _auth.get_api_key("zai")
 	_settings_dialog.popup_centered()
 
 
 func _on_settings_confirmed() -> void:
 	var sf_key = _sf_input.text.strip_edges()
 	var or_key = _or_input.text.strip_edges()
+	var xm_key = _xm_input.text.strip_edges()
+	var zai_key = _zai_input.text.strip_edges()
 	
 	if _auth:
 		_auth.set_api_key(sf_key, "siliconflow")
 		_auth.set_api_key(or_key, "openrouter")
-		var xm_key = _xm_input.text.strip_edges()
 		_auth.set_api_key(xm_key, "xiaomi")
+		_auth.set_api_key(zai_key, "zai")
 		
 		# 如果当前选中的 Provider 的 Key 发生了变化，尝试重新拉取模型
 		if _current_provider == "siliconflow" and sf_key != "":
 			_validate_and_fetch_models(sf_key, "siliconflow")
 		elif _current_provider == "openrouter" and or_key != "":
 			_validate_and_fetch_models(or_key, "openrouter")
+		elif _current_provider == "xiaomi" and xm_key != "":
+			_validate_and_fetch_models(xm_key, "xiaomi")
+		elif _current_provider == "zai" and zai_key != "":
+			_validate_and_fetch_models(zai_key, "zai")
 			
 		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("api_key_saved"))
 
@@ -430,6 +459,13 @@ func _validate_and_fetch_models(key: String, provider: String) -> void:
 		var is_token_plan = key.begins_with("tp-")
 		var base_url = "https://token-plan-cn.xiaomimimo.com/v1" if is_token_plan else "https://api.xiaomimimo.com/v1"
 		var url = base_url + "/models"
+		var http := HTTPRequest.new()
+		add_child(http)
+		http.request_completed.connect(_on_models_fetched.bind(http, key, provider))
+		http.request(url, ["Authorization: Bearer " + key], HTTPClient.METHOD_GET)
+	elif provider == "zai":
+		# Z.ai International Station
+		var url = "https://api.z.ai/api/paas/v4/models"
 		var http := HTTPRequest.new()
 		add_child(http)
 		http.request_completed.connect(_on_models_fetched.bind(http, key, provider))
@@ -474,7 +510,13 @@ func _on_models_fetched(result: int, code: int, headers: PackedStringArray, body
 	if _provider_btn:
 		_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
 	
-	# Fallback for Xiaomi if /v1/models fails
+	# Fallback logic: Only use fallback if it's not a clear authentication error
+	if code == 401 or code == 403:
+		_add_bubble(MessageBubble.Role.AI, "[img=16]res://addons/godot_maker/icons/ui/triangle-alert.svg[/img] API Key Validation Failed (Error %d)! Please check your key." % code)
+		if _provider_btn:
+			_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
+		return
+
 	if provider == "xiaomi":
 		var fallback_models = [
 			{"id": "MiMo-V2.5 Pro"},
@@ -482,6 +524,24 @@ func _on_models_fetched(result: int, code: int, headers: PackedStringArray, body
 			{"id": "MiMo-V2 Pro"},
 			{"id": "MiMo-V2-Omni"},
 			{"id": "MiMo-V2-Flash"}
+		]
+		_populate_models(fallback_models)
+		_handle_valid_key(key, provider)
+		return
+	elif provider == "zai":
+		var fallback_models = [
+			{"id": "glm-5.1"},
+			{"id": "glm-5"},
+			{"id": "glm-5-turbo"},
+			{"id": "glm-4.7"},
+			{"id": "glm-4.7-flash"},
+			{"id": "glm-4.6"},
+			{"id": "glm-4.5"},
+			{"id": "glm-4.5-air"},
+			{"id": "glm-4.5-flash"},
+			{"id": "glm-5v-turbo"},
+			{"id": "glm-4.6v"},
+			{"id": "autoglm-phone-multilingual"}
 		]
 		_populate_models(fallback_models)
 		_handle_valid_key(key, provider)
