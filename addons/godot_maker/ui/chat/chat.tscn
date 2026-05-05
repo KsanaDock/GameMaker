@@ -511,3 +511,25 @@ unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "👁"
+
+[node name="XMLabel" type="Label" parent="SettingsDialog/VBox/Grid"]
+layout_mode = 2
+text = "Xiaomi MiMo Key:"
+
+[node name="XMInputBox" type="HBoxContainer" parent="SettingsDialog/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="XiaomiMiMoInput" type="LineEdit" parent="SettingsDialog/VBox/Grid/XMInputBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "sk-..."
+secret = true
+
+[node name="XMEyeBtn" type="Button" parent="SettingsDialog/VBox/Grid/XMInputBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "👁"
+

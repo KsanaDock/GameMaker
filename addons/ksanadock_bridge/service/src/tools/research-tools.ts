@@ -49,7 +49,7 @@ const http = axios.create({
     maxRedirects: 5,
     maxContentLength: 2_000_000,
     headers: {
-        'User-Agent': 'KsanaDock-Agent-Research/1.0 (+https://github.com/ksanadock/ksanadock)',
+        'User-Agent': 'KsanaDock-Agent-Research/1.0 (+https://github.com/ksanadock/godotmaker)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7'
     }
 });

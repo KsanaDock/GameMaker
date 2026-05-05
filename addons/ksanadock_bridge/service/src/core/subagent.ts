@@ -24,17 +24,17 @@ export class Subagent {
 
     public async run(prompt: string, type: string = "general", name: string = "worker", activeScene: string = ""): Promise<string> {
         console.log(`[Subagent] Starting new [${type}] subagent for task: ${prompt}`);
-        const agentId = `sub_${name}_${Math.floor(Math.random()*10000)}`;
+        const agentId = `sub_${name}_${Math.floor(Math.random() * 10000)}`;
 
-        this.client.sendNotification('agent_event', { 
-            type: 'subagent_start', 
-            agentId: agentId, 
+        this.client.sendNotification('agent_event', {
+            type: 'subagent_start',
+            agentId: agentId,
             message: `Starting ${type} subagent...`,
-            title: prompt 
+            title: prompt
         });
-        
+
         const projectContext = await getHierarchicalContext(this.projectRoot, activeScene);
-        
+
         let typePrompt = "You are a specialized subagent for generic problem solving.";
         if (type === "code-reviewer") {
             typePrompt = "You are an independent Code Reviewer agent. Review code for safety, scalability, best practices, and correctness. Report findings concisely. Do NOT make edits yourself unless specifically asked in the prompt.";
@@ -85,10 +85,10 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
 
                 // If the model provided reasoning alongside tool calls, log it!
                 if (message.content) {
-                    this.client.sendNotification('agent_event', { 
-                        type: 'subagent_tool', 
-                        agentId: agentId, 
-                        message: `[Reasoning] ${message.content}` 
+                    this.client.sendNotification('agent_event', {
+                        type: 'subagent_tool',
+                        agentId: agentId,
+                        message: `[Reasoning] ${message.content}`
                     });
                 }
 
@@ -102,7 +102,7 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
                 return "[Subagent Error] Empty response and no tool calls.";
             }
         }
-        
+
         this.client.sendNotification('agent_event', { type: 'subagent_end', agentId: agentId, message: "Timeout" });
         return "[Subagent] Iteration limit reached without final conclusion.";
     }
@@ -155,10 +155,10 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
         }
 
         console.log(`[Subagent Tool] ${toolName}`);
-        this.client.sendNotification('agent_event', { 
-            type: 'subagent_tool', 
-            agentId, 
-            message: `Running ${toolName}...` 
+        this.client.sendNotification('agent_event', {
+            type: 'subagent_tool',
+            agentId,
+            message: `Running ${toolName}...`
         });
 
         try {
@@ -169,7 +169,7 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
                 name: toolName,
                 content: typeof result === 'string' ? result : JSON.stringify(result)
             };
-        } catch(err: any) {
+        } catch (err: any) {
             return {
                 role: 'tool',
                 tool_call_id: toolCall.id,
@@ -185,9 +185,9 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
         if (provider === 'siliconflow') {
             apiKey = process.env.SILICONFLOW_API_KEY;
         }
-        
+
         const model = process.env.MODEL || 'google/gemini-3-flash-preview';
-        
+
         let url = 'https://openrouter.ai/api/v1/chat/completions';
         if (provider === 'siliconflow') {
             url = 'https://api.siliconflow.cn/v1/chat/completions';
@@ -206,7 +206,7 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
                     {
                         headers: {
                             'Authorization': `Bearer ${apiKey}`,
-                            'HTTP-Referer': 'https://github.com/ksanadock/ksanadock',
+                            'HTTP-Referer': 'https://github.com/ksanadock/godotmaker',
                             'X-Title': 'KsanaDock Subagent',
                             'Content-Type': 'application/json'
                         },
@@ -218,7 +218,7 @@ ACTIVE_SCENE: ${activeScene || "None"}`;
                 if (err.response && err.response.status === 400) {
                     throw err; // Don't retry validation errors
                 }
-                console.warn(`[Subagent] API request failed (${err.message}). Retry ${i+1}/${retries}...`);
+                console.warn(`[Subagent] API request failed (${err.message}). Retry ${i + 1}/${retries}...`);
                 if (i === retries - 1) throw err;
                 await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1))); // Exponential backoff
             }

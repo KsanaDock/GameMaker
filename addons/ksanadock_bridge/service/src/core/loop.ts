@@ -12,6 +12,7 @@ dotenv.config();
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const SILICONFLOW_API_KEY = process.env.SILICONFLOW_API_KEY;
+const XIAOMI_API_KEY = process.env.XIAOMI_API_KEY;
 const MODEL = process.env.MODEL || 'deepseek/deepseek-v4-flash';
 
 export class AgentLoop {
@@ -94,13 +95,13 @@ Available Subagents:
     public async initializeSession(activeScene: string) {
         console.log(`[AgentLoop] Initializing session for scene: ${activeScene}`);
         this.activeScene = activeScene;
-        
+
         // Non-blocking background tasks
         const projectContextPromise = getHierarchicalContext(this.projectRoot, activeScene);
         const autoMemoryPromise = buildMemoryPrompt(this.projectRoot);
-        
-        const systemPrompt: Message = { 
-            role: 'system', 
+
+        const systemPrompt: Message = {
+            role: 'system',
             content: `${this.getSOP()}\n\n(Context pending...)\n\nACTIVE_SCENE: ${activeScene || "None"}`
         };
 
@@ -120,7 +121,7 @@ Available Subagents:
             } else {
                 this.history = [systemPrompt];
             }
-        } catch(e) {
+        } catch (e) {
             console.warn(`[AgentLoop] Session restoration failed: ${e}`);
             this.history = [systemPrompt];
         }
@@ -131,13 +132,13 @@ Available Subagents:
             try {
                 // Background scan
                 symbolMap = await this.toolRegistry.execute('grep_symbols', {});
-            } catch(e) {}
+            } catch (e) { }
 
             // Directly update the object we created above - this is safer than indexing the array
             systemPrompt.content = `${this.getSOP()}\n\n${memory}\n\nPROJECT_SYMBOL_MAP (LSP-LITE):\n${symbolMap}\n\nPROJECT_SPECIFIC_GUIDANCE:\n${context || "None"}\n\nACTIVE_SCENE: ${this.activeScene || "None"}`;
             console.log(`[AgentLoop] Background context initialization complete.`);
         });
-        
+
         await this.saveCurrentSession();
     }
 
@@ -160,13 +161,13 @@ Available Subagents:
         if (this.history.length <= 1) return false;
         const lastMsg = this.history[this.history.length - 1];
         if (!lastMsg) return false;
-        
+
         // 1. 如果最后一条消息不是 assistant，说明 AI 还没说完（可能是 user 刚发，或者是 tool 刚返回结果）
         if (lastMsg.role !== 'assistant') return true;
-        
+
         // 2. 如果最后一条是 assistant 但带有 tool_calls，说明正在等待工具执行
         if (lastMsg.role === 'assistant' && lastMsg.tool_calls && lastMsg.tool_calls.length > 0) return true;
-        
+
         return false;
     }
 
@@ -210,7 +211,7 @@ Available Subagents:
     private compactHistory() {
         const MAX_CHARS = 80000; // rough proxy for token budget
         const TARGET_CHARS = 50000;
-        
+
         let currentChars = JSON.stringify(this.history).length;
         if (currentChars <= MAX_CHARS) return;
 
@@ -240,13 +241,13 @@ Available Subagents:
         if (sliceIndex > 1) {
             const systemPrompt = this.history[0];
             const kept = this.history.slice(sliceIndex);
-            
+
             const newHistory: Message[] = [];
             if (systemPrompt) newHistory.push(systemPrompt);
             newHistory.push({ role: 'user', content: '[System Note: Older conversation history has been truncated to maintain context window. Rely on your .ksanadock/memory directory for long-term context.]' });
             newHistory.push({ role: 'assistant', content: 'Understood. I will rely on the Auto Memory index (MEMORY.md) and tool searches for prior context.' });
             newHistory.push(...kept);
-            
+
             this.history = newHistory;
             console.log(`[AgentLoop] History compacted to ${JSON.stringify(this.history).length} chars.`);
         }
@@ -254,7 +255,7 @@ Available Subagents:
 
     private async runLoop() {
         this.isRunning = true;
-        
+
         try {
             while (this.messageQueue.length > 0 || this.history[this.history.length - 1]?.role !== 'assistant') {
                 // Drain queue into history
@@ -279,7 +280,7 @@ Available Subagents:
                 this.history.forEach(m => {
                     const rawRole = (m as any).role;
                     if (!rawRole || rawRole === "") {
-                        (m as any).role = "assistant"; 
+                        (m as any).role = "assistant";
                     }
                 });
 
@@ -287,7 +288,7 @@ Available Subagents:
 
                 const res = await this.callLLM();
                 if (!res.choices || res.choices.length === 0) break;
-                
+
                 const message = res.choices[0].message;
                 if (!(message as any).role) (message as any).role = 'assistant'; // Force assistant role
                 if (!message.content) message.content = '';
@@ -296,7 +297,7 @@ Available Subagents:
                 if (message.tool_calls && message.tool_calls.length > 0) {
                     this.history.push(message);
                     await this.saveCurrentSession();
-                    
+
                     // If the model provided reasoning alongside tool calls, echo it back!
                     if (message.content) {
                         this.client.sendNotification('agent_reply', { text: message.content });
@@ -391,7 +392,7 @@ Available Subagents:
                 name,
                 content: typeof result === 'string' ? result : JSON.stringify(result)
             };
-        } catch(err: any) {
+        } catch (err: any) {
             return {
                 role: 'tool',
                 tool_call_id: toolCall.id,
@@ -403,15 +404,20 @@ Available Subagents:
 
     private async callLLM(retries = 3) {
         const tools = this.toolRegistry.getToolDefinitions();
-        
+
         let url = 'https://openrouter.ai/api/v1/chat/completions';
         let apiKey = this.currentApiKey || process.env.OPENROUTER_API_KEY;
-        
+
         if (this.currentProvider === 'siliconflow') {
             url = 'https://api.siliconflow.cn/v1/chat/completions';
             apiKey = this.currentApiKey || process.env.SILICONFLOW_API_KEY;
+        } else if (this.currentProvider === 'xiaomi') {
+            const isTokenPlan = apiKey && apiKey.startsWith('tp-');
+            url = isTokenPlan 
+                ? 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions'
+                : 'https://api.xiaomimimo.com/v1/chat/completions';
+            apiKey = this.currentApiKey || process.env.XIAOMI_API_KEY;
         }
-        
         for (let i = 0; i < retries; i++) {
             try {
                 const res = await axios.post(
@@ -425,7 +431,7 @@ Available Subagents:
                     {
                         headers: {
                             'Authorization': `Bearer ${apiKey}`,
-                            'HTTP-Referer': 'https://github.com/ksanadock/ksanadock',
+                            'HTTP-Referer': 'https://github.com/ksanadock/godotmaker',
                             'X-Title': 'KsanaDock Loop Engine',
                             'Content-Type': 'application/json'
                         },
@@ -442,10 +448,10 @@ Available Subagents:
                         if (apiError) {
                             err.message = `${err.message}: ${apiError}`;
                         }
-                        throw err; 
+                        throw err;
                     }
                 }
-                console.warn(`[AgentLoop] API request failed (${err.message}). Retry ${i+1}/${retries}...`);
+                console.warn(`[AgentLoop] API request failed (${err.message}). Retry ${i + 1}/${retries}...`);
                 if (i === retries - 1) throw err;
                 await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1))); // Exponential backoff
             }

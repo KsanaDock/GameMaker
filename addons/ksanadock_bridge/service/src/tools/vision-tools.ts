@@ -20,7 +20,7 @@ export function registerVisionTools(registry: any, projectRoot: string) {
         handler: async (args: any) => {
             const { imagePath, query } = args;
             const fullPath = path.resolve(projectRoot, imagePath);
-            
+
             if (!fullPath.startsWith(projectRoot)) {
                 return { error: 'Permission denied: path outside project root' };
             }
@@ -44,9 +44,9 @@ export function registerVisionTools(registry: any, projectRoot: string) {
                 if (provider === 'siliconflow') {
                     apiKey = process.env.SILICONFLOW_API_KEY;
                 }
-                
+
                 const model = process.env.MODEL || 'google/gemini-3-flash-preview';
-                
+
                 let url = 'https://openrouter.ai/api/v1/chat/completions';
                 if (provider === 'siliconflow') {
                     url = 'https://api.siliconflow.cn/v1/chat/completions';
@@ -82,7 +82,7 @@ export function registerVisionTools(registry: any, projectRoot: string) {
                     {
                         headers: {
                             'Authorization': `Bearer ${apiKey}`,
-                            'HTTP-Referer': 'https://github.com/ksanadock/ksanadock',
+                            'HTTP-Referer': 'https://github.com/ksanadock/godotmaker',
                             'X-Title': 'KsanaDock Vision Tool',
                             'Content-Type': 'application/json'
                         },

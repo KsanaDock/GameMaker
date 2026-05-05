@@ -34,10 +34,11 @@ signal api_key_saved
 @onready var _settings_dialog: AcceptDialog = %SettingsDialog
 @onready var _sf_input: LineEdit = %SiliconFlowInput
 @onready var _or_input: LineEdit = %OpenRouterInput
+@onready var _xm_input: LineEdit = %XiaomiMiMoInput
 @onready var _sf_eye_btn: Button = %SFEyeBtn
 @onready var _or_eye_btn: Button = %OREyeBtn
+@onready var _xm_eye_btn: Button = %XMEyeBtn
 var _connect_ksanadock_btn: Button
-
 var _messages: Array[Dictionary] = []  # {role, content}
 var _current_bubble: PanelContainer = null
 var _thinking_indicator: Control = null
@@ -95,6 +96,9 @@ func _load_persisted_state() -> void:
 	elif saved_provider == "openrouter":
 		if _provider_btn: _provider_btn.select(2)
 		_current_provider = "openrouter"
+	elif saved_provider == "xiaomi":
+		if _provider_btn: _provider_btn.select(3)
+		_current_provider = "xiaomi"
 		
 	if _current_provider != "":
 		var key = _auth.get_api_key(_current_provider) if _auth else ""
@@ -226,6 +230,8 @@ func _update_ui_localization() -> void:
 				if sf_label: sf_label.text = _tr("siliconflow_key")
 				var or_label = grid.get_node_or_null("ORLabel")
 				if or_label: or_label.text = _tr("openrouter_key")
+				var xm_label = grid.get_node_or_null("XMLabel")
+				if xm_label: xm_label.text = _tr("xiaomi_key")
 
 	# 如果只有一条欢迎消息，则尝试刷新欢迎消息的语言
 	if _messages.is_empty() and _msg_list.get_child_count() == 1:
@@ -247,6 +253,8 @@ func _connect_signals() -> void:
 		_sf_eye_btn.pressed.connect(func(): _sf_input.secret = not _sf_input.secret)
 	if _or_eye_btn:
 		_or_eye_btn.pressed.connect(func(): _or_input.secret = not _or_input.secret)
+	if _xm_eye_btn:
+		_xm_eye_btn.pressed.connect(func(): _xm_input.secret = not _xm_input.secret)
 	
 	_grab_btn = Button.new()
 	_grab_btn.text = _tr("grab_output")
@@ -318,6 +326,7 @@ func _create_auth_ui() -> void:
 		_provider_btn.set_item_disabled(0, true)
 		_provider_btn.add_item("硅基流动 (SiliconFlow)", 1)
 		_provider_btn.add_item("OpenRouter", 2)
+		_provider_btn.add_item("小米 (Xiaomi MiMo)", 3)
 		
 		# Remove radio circles from popup items
 		var popup = _provider_btn.get_popup()
@@ -336,8 +345,15 @@ func _on_provider_selected(index: int) -> void:
 		_current_provider = "siliconflow"
 	elif index == 2:
 		_current_provider = "openrouter"
+	elif index == 3:
+		_current_provider = "xiaomi"
 	else:
 		return
+	
+	if _model_select_btn:
+		_model_select_btn.clear()
+		_model_select_btn.add_item("Loading models...", 0)
+		_model_select_btn.disabled = true
 	
 	var existing_key = _auth.get_api_key(_current_provider) if _auth else ""
 	if existing_key == "":
@@ -375,6 +391,7 @@ func _open_settings() -> void:
 	if _auth:
 		_sf_input.text = _auth.get_api_key("siliconflow")
 		_or_input.text = _auth.get_api_key("openrouter")
+		_xm_input.text = _auth.get_api_key("xiaomi")
 	_settings_dialog.popup_centered()
 
 
@@ -385,6 +402,8 @@ func _on_settings_confirmed() -> void:
 	if _auth:
 		_auth.set_api_key(sf_key, "siliconflow")
 		_auth.set_api_key(or_key, "openrouter")
+		var xm_key = _xm_input.text.strip_edges()
+		_auth.set_api_key(xm_key, "xiaomi")
 		
 		# 如果当前选中的 Provider 的 Key 发生了变化，尝试重新拉取模型
 		if _current_provider == "siliconflow" and sf_key != "":
@@ -401,15 +420,29 @@ func _validate_and_fetch_models(key: String, provider: String) -> void:
 		add_child(http)
 		http.request_completed.connect(_on_openrouter_auth_checked.bind(http, key, provider))
 		http.request(url, ["Authorization: Bearer " + key], HTTPClient.METHOD_GET)
-	else:
+	elif provider == "siliconflow":
 		var url = "https://api.siliconflow.cn/v1/models"
 		var http := HTTPRequest.new()
 		add_child(http)
 		http.request_completed.connect(_on_models_fetched.bind(http, key, provider))
 		http.request(url, ["Authorization: Bearer " + key], HTTPClient.METHOD_GET)
+	elif provider == "xiaomi":
+		var is_token_plan = key.begins_with("tp-")
+		var base_url = "https://token-plan-cn.xiaomimimo.com/v1" if is_token_plan else "https://api.xiaomimimo.com/v1"
+		var url = base_url + "/models"
+		var http := HTTPRequest.new()
+		add_child(http)
+		http.request_completed.connect(_on_models_fetched.bind(http, key, provider))
+		http.request(url, ["Authorization: Bearer " + key], HTTPClient.METHOD_GET)
+	else:
+		pass
 
 func _on_openrouter_auth_checked(result: int, code: int, headers: PackedStringArray, body: PackedByteArray, http: HTTPRequest, key: String, provider: String) -> void:
 	http.queue_free()
+	
+	if provider != _current_provider:
+		return
+		
 	# Only fail if it's explicitly Unauthorized (401) or Forbidden (403)
 	if result == HTTPRequest.RESULT_SUCCESS and code != 401 and code != 403 and code != 0:
 		# Valid key, now fetch models
@@ -426,6 +459,11 @@ func _on_openrouter_auth_checked(result: int, code: int, headers: PackedStringAr
 
 func _on_models_fetched(result: int, code: int, headers: PackedStringArray, body: PackedByteArray, http: HTTPRequest, key: String, provider: String) -> void:
 	http.queue_free()
+	
+	# Race condition check: Only update if the result is for the currently selected provider
+	if provider != _current_provider:
+		return
+		
 	if result == HTTPRequest.RESULT_SUCCESS and code == 200:
 		var json = JSON.parse_string(body.get_string_from_utf8())
 		if typeof(json) == TYPE_DICTIONARY and json.has("data"):
@@ -435,12 +473,27 @@ func _on_models_fetched(result: int, code: int, headers: PackedStringArray, body
 			return
 	if _provider_btn:
 		_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
+	
+	# Fallback for Xiaomi if /v1/models fails
+	if provider == "xiaomi":
+		var fallback_models = [
+			{"id": "MiMo-V2.5 Pro"},
+			{"id": "MiMo-V2.5"},
+			{"id": "MiMo-V2 Pro"},
+			{"id": "MiMo-V2-Omni"},
+			{"id": "MiMo-V2-Flash"}
+		]
+		_populate_models(fallback_models)
+		_handle_valid_key(key, provider)
+		return
+
 	_add_bubble(MessageBubble.Role.AI, "[img=16]res://addons/godot_maker/icons/ui/triangle-alert.svg[/img] API Key Validation Failed! Please check your key.")
 
 func _populate_models(models: Array) -> void:
 	if not _model_select_btn: return
 	_model_select_btn.clear()
 	_model_select_btn.show()
+	_model_select_btn.disabled = false
 	for i in range(models.size()):
 		var m = models[i]
 		var m_id = m.get("id", "")

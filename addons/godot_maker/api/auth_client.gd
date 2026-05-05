@@ -50,6 +50,8 @@ func get_api_key(provider: String = "") -> String:
 	var prefix = "OPENROUTER_API_KEY="
 	if provider == "siliconflow":
 		prefix = "SILICONFLOW_API_KEY="
+	elif provider == "xiaomi":
+		prefix = "XIAOMI_API_KEY="
 	
 	for line in content.split("\n"):
 		if line.begins_with(prefix):
@@ -79,7 +81,7 @@ func update_external_env(key: String, provider: String = "") -> void:
 			# 连 .env.example 都没有，创建一个最简的
 			var f = FileAccess.open(env_path, FileAccess.WRITE)
 			if f:
-				f.store_string("OPENROUTER_API_KEY=\nSILICONFLOW_API_KEY=\nSITE_URL=http://localhost:9090\nSITE_NAME=GodotMaker Agent\n")
+				f.store_string("OPENROUTER_API_KEY=\nSILICONFLOW_API_KEY=\nXIAOMI_API_KEY=\nSITE_URL=http://localhost:9090\nSITE_NAME=GodotMaker Agent\n")
 				f.close()
 	
 	var content = FileAccess.get_file_as_string(env_path)
@@ -87,6 +89,8 @@ func update_external_env(key: String, provider: String = "") -> void:
 	var prefix = "OPENROUTER_API_KEY="
 	if provider == "siliconflow":
 		prefix = "SILICONFLOW_API_KEY="
+	elif provider == "xiaomi":
+		prefix = "XIAOMI_API_KEY="
 		
 	var found = false
 	for i in range(lines.size()):

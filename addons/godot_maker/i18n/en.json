@@ -33,6 +33,7 @@
 		"api_key_management": "API Key Management",
 		"siliconflow_key": "SiliconFlow API Key",
 		"openrouter_key": "OpenRouter API Key",
+		"xiaomi_key": "Xiaomi MiMo API Key",
 		"settings_save": "Save Settings",
 		"tool_executing": "Executing: [b]%s[/b](%s)",
 		"tool_result": "Result of [b]%s[/b]:\n%s",
