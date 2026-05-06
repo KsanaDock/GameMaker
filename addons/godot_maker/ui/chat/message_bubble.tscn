@@ -3,6 +3,6 @@
 [ext_resource type="Theme" path="res://addons/godot_maker/ui/chat/message_bubble.tres" id="1"]
 [ext_resource type="Script" path="res://addons/godot_maker/ui/chat/message_bubble.gd" id="2"]
 
-[node name="MessageBubble" type="PanelContainer" unique_id=1051001885]
+[node name="MessageBubble" type="VBoxContainer" unique_id=1051001885]
 theme = ExtResource("1")
 script = ExtResource("2")

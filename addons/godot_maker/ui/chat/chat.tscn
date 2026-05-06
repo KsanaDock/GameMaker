@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://div2afh2v28x5" path="res://addons/godot_maker/ui/chat/chat.gd" id="1"]
 [ext_resource type="Theme" uid="uid://c8y2v4n5x7m6p" path="res://addons/godot_maker/theme/chat_theme.tres" id="2"]
 [ext_resource type="Texture2D" uid="uid://bakax6nr10cc4" path="res://addons/godot_maker/icons/ui/x.svg" id="3"]
-[ext_resource type="Texture2D" uid="uid://dd15hxs1jriwk" path="res://addons/godot_maker/icons/ui/clipboard.svg" id="4"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3bsu"]
 bg_color = Color(0.6117647, 0.5058824, 0.9882353, 0)
@@ -17,25 +16,14 @@ bg_color = Color(0.6, 0.6, 0.6, 0)
 [sub_resource type="Theme" id="Theme_l2ofy"]
 /styles/normal = SubResource("StyleBoxFlat_wu6ng")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l2ofy"]
-bg_color = Color(0.90588236, 0.25882354, 0.9411765, 0)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_80nyu"]
-bg_color = Color(0.164706, 0.164706, 0.164706, 1)
-
-[sub_resource type="Theme" id="Theme_wu6ng"]
-ScrollContainer/colors/scroll_hint_horizontal_color = Color(1, 0, 0, 0)
-ScrollContainer/colors/scroll_hint_vertical_color = Color(0, 0, 0, 1)
-ScrollContainer/styles/focus = SubResource("StyleBoxFlat_l2ofy")
-ScrollContainer/styles/panel = SubResource("StyleBoxFlat_80nyu")
-
 [sub_resource type="Theme" id="Theme_80nyu"]
 VBoxContainer/constants/separation = 4
 
 [node name="Chat" type="VBoxContainer" unique_id=308225465]
-anchors_preset = 15
-anchor_right = 1.0
+anchors_preset = -1
+anchor_right = 0.99500006
 anchor_bottom = 1.0
+offset_right = 5.7598877
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2")
@@ -45,7 +33,7 @@ script = ExtResource("1")
 [node name="HeaderBG" type="PanelContainer" parent="." unique_id=381236196]
 clip_contents = true
 layout_mode = 2
-theme_type_variation = &"BubbleAI"
+theme_type_variation = &"HeaderBG"
 
 [node name="Margin" type="MarginContainer" parent="HeaderBG" unique_id=503698131]
 layout_mode = 2
@@ -94,8 +82,7 @@ text = "Rollback"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme = SubResource("Theme_wu6ng")
-scroll_vertical = 2347
+scroll_vertical = 9538
 horizontal_scroll_mode = 0
 
 [node name="TopPad" type="MarginContainer" parent="Scroll" unique_id=1950153992]
@@ -168,14 +155,6 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="CtxSceneBtn" type="Button" parent="InputBG/OuterMargin/Margin/VBox/CtxBar" unique_id=1438998220]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Attach current scene tree info"
-theme_override_font_sizes/font_size = 11
-text = " 场景上下文"
-icon = ExtResource("4")
-
 [node name="RefScroll" type="ScrollContainer" parent="InputBG/OuterMargin/Margin/VBox/CtxBar" unique_id=259030531]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -203,8 +182,7 @@ theme_override_constants/separation = 4
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
-theme_override_colors/font_hover_color = Color(0.9098039, 0.9098039, 0.9098039, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_colors/font_hover_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
 selected = 0
 item_count = 5
 popup/item_0/text = "选择大模型代理商..."
@@ -225,7 +203,7 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_colors/font_hover_color = Color(0.41960785, 0.41960785, 0.41960785, 1)
 
 [node name="Spacer" type="Control" parent="InputBG/OuterMargin/Margin/VBox/ProviderBar" unique_id=2114847263]
 layout_mode = 2
@@ -235,6 +213,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_vertical = 4
 theme_type_variation = &"ButtonSend"
 text = "→"
 

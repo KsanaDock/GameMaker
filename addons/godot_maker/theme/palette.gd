@@ -5,11 +5,11 @@ extends RefCounted
 ## 核心原则："去容器化" — 消灭不必要的背景色块和边框
 
 # ── 背景 ──
-const BG_MAIN := Color("#2a2a2a") # 主背景：极深灰
-const BG_CARD := Color("#2a2a2a") # 卡片底色（与主背景融合）
-const BG_INPUT := Color("#2a2a2a") # 输入胶囊底色
+const BG_MAIN := Color("#292929") # 主背景：极深灰
+const BG_CARD := Color("#292929") # 卡片底色（与主背景融合）
+const BG_INPUT := Color("#292929") # 输入胶囊底色
 const BG_HOVER := Color("#333333") # 悬停态底色
-const BG_HEADER := Color("#2a2a2a") # 顶栏融入主背景
+const BG_HEADER := Color("#292929") # 顶栏融入主背景
 
 # ── 强调色 ──
 const EMERALD := Color("#10b981")
@@ -30,10 +30,10 @@ const BORDER_FOCUS := Color("#10b981", 0.4)
 const BORDER_ERROR := Color("#ef4444", 0.5)
 
 # ── 消息气泡 ──
-const BUBBLE_USER := Color("#383838") # 用户气泡：深灰色，在 #2a2a2a 背景上可见
+const BUBBLE_USER := Color("#292929") # 用户气泡：#292929
 const BUBBLE_USER_BORDER := Color.TRANSPARENT # 用户气泡：无边框
-const BUBBLE_AI := Color("#2a2a2a") # AI气泡：融入背景
-const BUBBLE_AI_BORDER := Color("#2a2a2a") # AI气泡：无边框
+const BUBBLE_AI := Color.TRANSPARENT # AI气泡：透明
+const BUBBLE_AI_BORDER := Color.TRANSPARENT # AI气泡：无边框
 
 # ── 语义色 ──
 const SUCCESS := Color("#22c55e")
