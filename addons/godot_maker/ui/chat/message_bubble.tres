@@ -1,0 +1,25 @@
+[gd_resource type="Theme" format=3 uid="uid://b5vm3dtdcf78h"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_BubbleAI"]
+bg_color = Color(0.164706, 0.164706, 0.164706, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_BubbleUser"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.11764706, 0.11764706, 0.11764706, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Root"]
+bg_color = Color(0.164706, 0.164706, 0.164706, 1)
+
+[resource]
+BubbleAI/base_type = &"PanelContainer"
+BubbleAI/styles/panel = SubResource("StyleBoxFlat_BubbleAI")
+BubbleUser/base_type = &"PanelContainer"
+BubbleUser/styles/panel = SubResource("StyleBoxFlat_BubbleUser")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_Root")

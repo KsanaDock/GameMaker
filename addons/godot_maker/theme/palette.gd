@@ -5,11 +5,11 @@ extends RefCounted
 ## 核心原则："去容器化" — 消灭不必要的背景色块和边框
 
 # ── 背景 ──
-const BG_MAIN := Color("#1e1e1e")        # 主背景：极深灰
-const BG_CARD := Color("#1e1e1e")        # 卡片底色（与主背景融合）
-const BG_INPUT := Color("#2a2a2a")       # 输入胶囊底色
-const BG_HOVER := Color("#333333")       # 悬停态底色
-const BG_HEADER := Color("#1e1e1e")      # 顶栏融入主背景
+const BG_MAIN := Color("#2a2a2a") # 主背景：极深灰
+const BG_CARD := Color("#2a2a2a") # 卡片底色（与主背景融合）
+const BG_INPUT := Color("#2a2a2a") # 输入胶囊底色
+const BG_HOVER := Color("#333333") # 悬停态底色
+const BG_HEADER := Color("#2a2a2a") # 顶栏融入主背景
 
 # ── 强调色 ──
 const EMERALD := Color("#10b981")
@@ -18,10 +18,10 @@ const SKY := Color("#38bdf8")
 const SKY_DIM := Color("#0c4a6e")
 
 # ── 文字 ──
-const TEXT_PRIMARY := Color("#e8e8e8")   # 主文本：柔白
+const TEXT_PRIMARY := Color("#e8e8e8") # 主文本：柔白
 const TEXT_SECONDARY := Color("#a1a1aa")
-const TEXT_DIM := Color("#6b6b6b")       # 占位符/暗淡
-const TEXT_TOOL := Color("#8e8e8e")      # 工具日志专用灰
+const TEXT_DIM := Color("#6b6b6b") # 占位符/暗淡
+const TEXT_TOOL := Color("#8e8e8e") # 工具日志专用灰
 const TEXT_LINK := Color("#34d399")
 
 # ── 边框 ──
@@ -30,10 +30,10 @@ const BORDER_FOCUS := Color("#10b981", 0.4)
 const BORDER_ERROR := Color("#ef4444", 0.5)
 
 # ── 消息气泡 ──
-const BUBBLE_USER := Color("#2f2f2f")              # 用户气泡：独立卡片灰
-const BUBBLE_USER_BORDER := Color.TRANSPARENT       # 用户气泡：无边框！
-const BUBBLE_AI := Color.TRANSPARENT                # AI气泡：透明
-const BUBBLE_AI_BORDER := Color.TRANSPARENT         # AI气泡：无边框
+const BUBBLE_USER := Color("#383838") # 用户气泡：深灰色，在 #2a2a2a 背景上可见
+const BUBBLE_USER_BORDER := Color.TRANSPARENT # 用户气泡：无边框
+const BUBBLE_AI := Color("#2a2a2a") # AI气泡：融入背景
+const BUBBLE_AI_BORDER := Color("#2a2a2a") # AI气泡：无边框
 
 # ── 语义色 ──
 const SUCCESS := Color("#22c55e")
@@ -42,9 +42,9 @@ const ERROR := Color("#ef4444")
 
 # ── 圆角 ──
 const RADIUS_SM := 8
-const RADIUS_MD := 18       # 气泡主圆角（更柔和）
-const RADIUS_LG := 24       # 输入胶囊
-const RADIUS_PILL := 50     # 全圆（发送按钮）
+const RADIUS_MD := 18 # 气泡主圆角（更柔和）
+const RADIUS_LG := 24 # 输入胶囊
+const RADIUS_PILL := 50 # 全圆（发送按钮）
 
 # ── 间距 ──
 const PAD_XS := 4

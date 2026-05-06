@@ -5,7 +5,7 @@ extends VBoxContainer
 const MessageBubble = preload("res://addons/godot_maker/ui/chat/message_bubble.gd")
 
 var _auth: KAuthClient
-var _ai_client: KAIClient
+
 var _bridge: Node # The GodotMaker Bridge instance
 
 @onready var _msg_list: VBoxContainer = %MsgList
@@ -21,12 +21,8 @@ var _bridge: Node # The GodotMaker Bridge instance
 var _current_provider: String = ""
 var _selected_model: String = ""
 
-signal login_requested
 signal api_key_saved
 
-@onready var _start_overlay: CenterContainer = %StartOverlay
-@onready var _start_btn: Button = %StartBtn
-@onready var _auth_dialog: AcceptDialog = %AuthDialog
 @onready var _api_key_dialog: AcceptDialog = %APIKeyDialog
 @onready var _api_key_input: LineEdit = %APIKeyInput
 @onready var _api_key_eye_btn: Button = %APIKeyEyeBtn
@@ -40,7 +36,6 @@ signal api_key_saved
 @onready var _xm_eye_btn: Button = %XMEyeBtn
 @onready var _zai_input: LineEdit = %ZAIMiMoInput
 @onready var _zai_eye_btn: Button = %ZAIEyeBtn
-var _connect_ksanadock_btn: Button
 var _messages: Array[Dictionary] = []  # {role, content}
 var _current_bubble: PanelContainer = null
 var _thinking_indicator: Control = null
@@ -74,6 +69,16 @@ func _process(_delta: float) -> void:
 	if not _bridge and EditorInterface.get_base_control().has_meta("ksanadock_bridge"):
 		set_bridge(EditorInterface.get_base_control().get_meta("ksanadock_bridge"))
 
+
+func _draw() -> void:
+	# 用主题色填充整个聊天区域，覆盖 Godot 编辑器 Dock 默认的 #1e1e1e 底色
+	draw_rect(Rect2(Vector2.ZERO, size), KPalette.BG_MAIN)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		queue_redraw()
+
 func _ready() -> void:
 	name = "Chat"
 	if _scroll:
@@ -84,9 +89,7 @@ func _ready() -> void:
 	
 	_apply_theme()
 	_update_ui_localization()
-	_create_auth_ui()
 	_connect_signals()
-	_check_auth_status()
 
 
 func _load_persisted_state() -> void:
@@ -114,91 +117,24 @@ func _on_locale_changed(_lang: String) -> void:
 	_update_ui_localization()
 
 
-func _on_input_focus_entered() -> void:
-	_input_field.add_theme_stylebox_override("normal", _input_focused)
 
-
-func _on_input_focus_exited() -> void:
-	_input_field.add_theme_stylebox_override("normal", _input_normal)
 
 
 func initialize(auth: KAuthClient) -> void:
 	if _auth == auth: return
 	_auth = auth
-	_ai_client = KAIClient.new()
-	_ai_client.initialize(_auth)
-	_ai_client.stream_chunk.connect(_on_stream_chunk)
-	_ai_client.stream_done.connect(_on_stream_done)
-	_ai_client.stream_error.connect(_on_stream_error)
 	
-	_check_auth_status()
 	_load_persisted_state()
 	
 	# 欢迎消息
 	if _messages.is_empty():
 		_add_bubble(MessageBubble.Role.AI, _tr("welcome"))
 
-func _check_auth_status() -> void:
-	var authed = false
-	if _auth:
-		authed = _auth.is_logged_in() or _auth.has_api_key()
-	
-	if _start_overlay:
-		_start_overlay.visible = not authed
-	if _input_bg:
-		_input_bg.visible = authed
 
 
 func _apply_theme() -> void:
-	if not _send_btn: return
-	
-	# ── 发送按钮：白色正圆 + 黑色↑箭头（ChatGPT 风格） ──
-	_send_btn.add_theme_stylebox_override("normal", KPalette.btn_send())
-	_send_btn.add_theme_stylebox_override("hover", KPalette.btn_send_hover())
-	_send_btn.add_theme_stylebox_override("pressed", KPalette.btn_send_pressed())
-	_send_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_send_btn.add_theme_color_override("font_color", Color("#000000"))
-	_send_btn.add_theme_color_override("font_hover_color", Color("#000000"))
-	_send_btn.add_theme_color_override("font_pressed_color", Color("#333333"))
-	
-	# ── 顶栏按钮：全部幽灵风格（Ghost Button） ──
-	_clear_btn.add_theme_stylebox_override("normal", KPalette.btn_ghost())
-	_clear_btn.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
-	_clear_btn.add_theme_stylebox_override("pressed", KPalette.btn_ghost())
-	_clear_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	
-	_settings_btn.add_theme_stylebox_override("normal", KPalette.btn_ghost())
-	_settings_btn.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
-	_settings_btn.add_theme_stylebox_override("pressed", KPalette.btn_ghost())
-	_settings_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_settings_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
-	_settings_btn.add_theme_color_override("font_hover_color", KPalette.TEXT_PRIMARY)
-
-	# ── 附属按钮：幽灵风格（场景上下文、抓取输出等） ──
-	_ctx_scene_btn.add_theme_stylebox_override("normal", KPalette.btn_ghost())
-	_ctx_scene_btn.add_theme_stylebox_override("hover", KPalette.btn_ghost_hover())
-	_ctx_scene_btn.add_theme_stylebox_override("pressed", KPalette.btn_ghost())
-	_ctx_scene_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_ctx_scene_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
-	_ctx_scene_btn.add_theme_color_override("font_hover_color", KPalette.TEXT_PRIMARY)
-
-	# ── Provider/Model 下拉框：透明化处理 ──
-	if _provider_btn:
-		_provider_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
-		_provider_btn.add_theme_color_override("font_hover_color", KPalette.TEXT_PRIMARY)
-	if _model_select_btn:
-		_model_select_btn.add_theme_color_override("font_color", KPalette.TEXT_DIM)
-
-	# ── 输入框：完全透明无边框，融入胶囊体 ──
-	_input_normal = KPalette.input_style_normal()
-	_input_focused = KPalette.input_style_focused()
-	_input_field.add_theme_stylebox_override("normal", _input_normal)
-	_input_field.add_theme_stylebox_override("focus", _input_focused)
-	_input_field.add_theme_color_override("font_color", KPalette.TEXT_PRIMARY)
-	_input_field.add_theme_color_override("font_placeholder_color", KPalette.TEXT_DIM)
-	
-	_input_field.focus_entered.connect(_on_input_focus_entered)
-	_input_field.focus_exited.connect(_on_input_focus_exited)
+	# 大部分样式已移至 chat_theme.tres
+	pass
 
 
 func _tr(key: String) -> String:
@@ -208,13 +144,6 @@ func _tr(key: String) -> String:
 func _update_ui_localization() -> void:
 	if _grab_btn:
 		_grab_btn.text = _tr("grab_output")
-	if _start_btn:
-		_start_btn.text = _tr("start_creating")
-	if _auth_dialog:
-		_auth_dialog.title = _tr("choose_auth_method")
-		_auth_dialog.get_ok_button().text = _tr("input_api_key")
-		if _connect_ksanadock_btn:
-			_connect_ksanadock_btn.text = _tr("connect_ksanadock")
 	if _api_key_dialog:
 		_api_key_dialog.title = _tr("enter_api_key_title")
 	if _api_key_input:
@@ -264,7 +193,7 @@ func _connect_signals() -> void:
 	_grab_btn = Button.new()
 	_grab_btn.text = _tr("grab_output")
 	_grab_btn.add_theme_font_size_override("font_size", 11)
-	_grab_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
+	_grab_btn.add_theme_font_size_override("font_size", 11)
 	_grab_btn.pressed.connect(_grab_output_selection)
 	if has_node("%CtxBar"):
 		get_node("%CtxBar").add_child(_grab_btn)
@@ -276,8 +205,7 @@ func _connect_signals() -> void:
 	_attach_img_btn.text = " 📎"
 	_attach_img_btn.tooltip_text = _tr("attach_image")
 	_attach_img_btn.add_theme_font_size_override("font_size", 14)
-	_attach_img_btn.add_theme_stylebox_override("normal", KPalette.btn_secondary())
-	_attach_img_btn.add_theme_stylebox_override("hover", KPalette.btn_secondary_hover())
+	_attach_img_btn.add_theme_font_size_override("font_size", 14)
 	_attach_img_btn.pressed.connect(_on_attach_image_pressed)
 	if has_node("%CtxBar"):
 		get_node("%CtxBar").add_child(_attach_img_btn)
@@ -291,6 +219,27 @@ func _connect_signals() -> void:
 		# Move preview before RefList area
 		get_node("%CtxBar").get_parent().move_child(_img_preview, 1)
 
+	# ── 供应商选择按钮 ──
+	if _provider_btn:
+		_provider_btn.clear()
+		_provider_btn.add_item("选择大模型代理商...", 0)
+		_provider_btn.set_item_disabled(0, true)
+		_provider_btn.add_item("硅基流动 (SiliconFlow)", 1)
+		_provider_btn.add_item("OpenRouter", 2)
+		_provider_btn.add_item("小米 (Xiaomi MiMo)", 3)
+		_provider_btn.add_item("智谱 (Z.ai)", 4)
+		
+		# 使下拉菜单宽度自适应
+		var popup = _provider_btn.get_popup()
+		if popup:
+			for i in range(popup.get_item_count()):
+				popup.set_item_as_radio_checkable(i, false)
+				popup.set_item_as_checkable(i, false)
+		
+		_provider_btn.select(0)
+		if not _provider_btn.item_selected.is_connected(_on_provider_selected):
+			_provider_btn.item_selected.connect(_on_provider_selected)
+
 	# ── 文件选择器 ──
 	_img_dialog = FileDialog.new()
 	_img_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
@@ -301,61 +250,6 @@ func _connect_signals() -> void:
 	_img_dialog.file_selected.connect(_on_image_file_selected)
 	add_child(_img_dialog)
 
-func _create_auth_ui() -> void:
-	if not _auth_dialog: return
-	
-	# 设置独占/瞬态属性
-	_auth_dialog.transient = true
-	_auth_dialog.exclusive = true
-	_api_key_dialog.transient = true
-	_api_key_dialog.exclusive = true
-	
-	# 添加连接按钮并保存引用 (防止 @tool 下重复添加)
-	if _connect_ksanadock_btn == null:
-		_connect_ksanadock_btn = _auth_dialog.add_button("", true, "connect")
-	
-	if not _auth_dialog.confirmed.is_connected(_on_api_key_choice):
-		_auth_dialog.confirmed.connect(_on_api_key_choice)
-	if not _auth_dialog.custom_action.is_connected(_on_auth_custom_action):
-		_auth_dialog.custom_action.connect(_on_auth_custom_action)
-	
-	if not _api_key_dialog.confirmed.is_connected(_on_api_key_submitted):
-		_api_key_dialog.confirmed.connect(_on_api_key_submitted)
-	
-	if not _start_btn.pressed.is_connected(_on_start_pressed):
-		_start_btn.pressed.connect(_on_start_pressed)
-	
-	if not _sf_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
-		_sf_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_sf_input))
-	if not _or_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
-		_or_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_or_input))
-	if not _xm_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
-		_xm_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_xm_input))
-	if not _zai_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
-		_zai_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_zai_input))
-	if not _api_key_eye_btn.pressed.is_connected(_on_eye_btn_pressed):
-		_api_key_eye_btn.pressed.connect(_on_eye_btn_pressed.bind(_api_key_input))
-		
-	if _provider_btn:
-		_provider_btn.clear()
-		_provider_btn.add_item("选择大模型代理商...", 0)
-		_provider_btn.set_item_disabled(0, true)
-		_provider_btn.add_item("硅基流动 (SiliconFlow)", 1)
-		_provider_btn.add_item("OpenRouter", 2)
-		_provider_btn.add_item("小米 (Xiaomi MiMo)", 3)
-		_provider_btn.add_item("智谱 (Z.ai)", 4)
-		
-		# Remove radio circles from popup items
-		var popup = _provider_btn.get_popup()
-		for i in range(popup.get_item_count()):
-			popup.set_item_as_radio_checkable(i, false)
-			popup.set_item_as_checkable(i, false)
-			
-		_provider_btn.select(0)
-		if not _provider_btn.item_selected.is_connected(_on_provider_selected):
-			_provider_btn.item_selected.connect(_on_provider_selected)
-	
-	_update_ui_localization()
 
 func _on_provider_selected(index: int) -> void:
 	if index == 1:
@@ -381,22 +275,6 @@ func _on_provider_selected(index: int) -> void:
 		_validate_and_fetch_models(existing_key, _current_provider)
 
 
-func _on_auth_custom_action(action: String) -> void:
-	if action == "connect":
-		_auth_dialog.hide()
-		_on_ksanadock_choice()
-
-func _on_start_pressed() -> void:
-	_auth_dialog.popup_centered()
-
-func _on_eye_btn_pressed(input: LineEdit) -> void:
-	input.secret = not input.secret
-
-func _on_api_key_choice() -> void:
-	_api_key_dialog.popup_centered()
-
-func _on_ksanadock_choice() -> void:
-	login_requested.emit()
 
 func _on_api_key_submitted() -> void:
 	var key = _api_key_input.text.strip_edges()
@@ -595,7 +473,6 @@ func _handle_valid_key(key: String, provider: String) -> void:
 		es.set_setting("ksanadock/ai_provider", provider)
 		
 		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, "API key validated and saved.")
-		_check_auth_status()
 		api_key_saved.emit()
 		
 		if _bridge and _bridge.has_method("restart_service"):
@@ -628,7 +505,10 @@ func _send_message() -> void:
 	if text == "" and _context_refs.is_empty() and _pending_images.is_empty():
 		return
 
-	# 构建上下文内容
+	# 保存原始提问用于 UI 显示
+	var display_text = text
+	
+	# 构建上下文内容用于发送给 AI
 	var full_context = ""
 	for ref in _context_refs:
 		if ref.type == "file":
@@ -644,8 +524,9 @@ func _send_message() -> void:
 			var tl = meta.get("to_line", 0)
 			full_context += "[Code Reference: %s (lines %d-%d)]\n```gdscript\n%s\n```\n" % [file, fl, tl, ref.data]
 	
+	var ai_text = text
 	if full_context != "":
-		text = "--- Context References ---\n" + full_context + "\n--- User Question ---\n" + text
+		ai_text = "--- Context References ---\n" + full_context + "\n--- User Question ---\n" + text
 
 	# 收集图片数据
 	var image_textures: Array = []
@@ -659,8 +540,10 @@ func _send_message() -> void:
 		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("vision_not_supported"))
 
 	_input_field.text = ""
-	_pending_user_bubble = _add_bubble_with_images(MessageBubble.Role.USER, text, image_textures)
-	_messages.append({"role": "user", "content": text})
+	# UI 仅显示用户输入的内容，不显示原始上下文
+	_pending_user_bubble = _add_bubble_with_images(MessageBubble.Role.USER, display_text, image_textures)
+	# 发送给 AI 的内容包含上下文
+	_messages.append({"role": "user", "content": ai_text})
 	
 	_context_refs.clear()
 	_update_ref_list()
@@ -676,8 +559,6 @@ func _send_message() -> void:
 	if _bridge and _bridge.has_method("send_chat_to_agent"):
 		var api_key = _auth.get_api_key(_current_provider) if _auth else ""
 		_bridge.send_chat_to_agent(text, _on_bridge_response, false, _current_provider, _selected_model, api_key, image_base64s)
-	elif _ai_client:
-		_ai_client.send_message(_messages)
 	else:
 		_on_stream_done(_tr("not_connected"))
 
@@ -1228,6 +1109,7 @@ func _add_bubble(role: int, text: String) -> PanelContainer:
 func _create_bubble(role: int, text: String, images: Array = []) -> PanelContainer:
 	var bubble := PanelContainer.new()
 	bubble.set_script(MessageBubble)
+	bubble.theme = theme  # 确保气泡使用正确的主题
 	bubble.setup(role, text, images)
 	return bubble
 

@@ -74,7 +74,7 @@ func _build(text: String, images: Array = []) -> void:
 	for c in get_children():
 		c.queue_free()
 
-	# ── 根节点：始终透明外壳 ──
+	# ── 根节点：彻底透明，不带任何边框或背景 ──
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
@@ -97,47 +97,25 @@ func _build(text: String, images: Array = []) -> void:
 		margin_container.add_theme_constant_override("margin_right", 4)
 	add_child(margin_container)
 
-	var bubble_panel := PanelContainer.new()
-	bubble_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin_container.add_child(bubble_panel)
+	var bubble_container: Control
+	if _role == Role.AI:
+		bubble_container = MarginContainer.new()
+	else:
+		bubble_container = PanelContainer.new()
+		
+	bubble_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin_container.add_child(bubble_container)
 
 	match _role:
 		Role.USER:
-			# 用户气泡：纯色卡片，无边框(border_width = 0)，18px 圆角
-			var user_sb := StyleBoxFlat.new()
-			user_sb.bg_color = KPalette.BUBBLE_USER
-			user_sb.corner_radius_top_left = KPalette.RADIUS_MD
-			user_sb.corner_radius_top_right = KPalette.RADIUS_MD
-			user_sb.corner_radius_bottom_left = KPalette.RADIUS_MD
-			user_sb.corner_radius_bottom_right = KPalette.RADIUS_MD
-			user_sb.content_margin_top = 12
-			user_sb.content_margin_bottom = 12
-			user_sb.content_margin_left = 16
-			user_sb.content_margin_right = 16
-			bubble_panel.add_theme_stylebox_override("panel", user_sb)
+			bubble_container.theme_type_variation = &"BubbleUser"
 		Role.AI:
-			# AI 气泡：完全透明，文本直出（Cursor 风格）
-			var ai_empty := StyleBoxEmpty.new()
-			ai_empty.content_margin_top = 4
-			ai_empty.content_margin_bottom = 4
-			ai_empty.content_margin_left = 4
-			ai_empty.content_margin_right = 4
-			bubble_panel.add_theme_stylebox_override("panel", ai_empty)
+			bubble_container.theme_type_variation = &"BubbleAI"
 
 	# ── 内容布局 ──
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 10)
-	bubble_panel.add_child(hbox)
-
-	# ── AI 头像：绿色 ✦ ──
-	if _role == Role.AI:
-		var avatar := Label.new()
-		avatar.text = "✦"
-		avatar.add_theme_font_size_override("font_size", 16)
-		avatar.add_theme_color_override("font_color", KPalette.EMERALD)
-		avatar.custom_minimum_size = Vector2(18, 18)
-		avatar.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		hbox.add_child(avatar)
+	bubble_container.add_child(hbox)
 
 	# ── 文本内容 ──
 	_content_label = RichTextLabel.new()
@@ -147,8 +125,6 @@ func _build(text: String, images: Array = []) -> void:
 	_content_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_label.custom_minimum_size.x = 1
-	_content_label.add_theme_color_override("default_color", KPalette.TEXT_PRIMARY)
-	_content_label.add_theme_font_size_override("normal_font_size", 14)
 	_content_label.text = _format_text(text)
 	hbox.add_child(_content_label)
 	if _role == Role.USER and _checkpoint_id != "":
@@ -171,10 +147,10 @@ func _build(text: String, images: Array = []) -> void:
 		var content_vbox := VBoxContainer.new()
 		content_vbox.add_theme_constant_override("separation", 6)
 		# Re-parent the hbox content into vbox
-		bubble_panel.remove_child(hbox)
+		bubble_container.remove_child(hbox)
 		content_vbox.add_child(hbox)
 		content_vbox.add_child(img_container)
-		bubble_panel.add_child(content_vbox)
+		bubble_container.add_child(content_vbox)
 
 
 func _add_user_rollback_button() -> void:
@@ -227,6 +203,7 @@ func _build_tool_inline(text: String) -> void:
 	# ── 第一行：图标 + 摘要文本 + 折叠箭头 ──
 	var header_hbox := HBoxContainer.new()
 	header_hbox.add_theme_constant_override("separation", 8)
+	header_hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	vbox.add_child(header_hbox)
 
 	# 齿轮图标
@@ -285,12 +262,13 @@ func _build_tool_inline(text: String) -> void:
 	detail_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	detail_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_label.custom_minimum_size.x = 1
-	detail_label.add_theme_color_override("default_color", Color("#777777"))
-	detail_label.add_theme_font_size_override("normal_font_size", 11)
 	var detail_text = text.strip_edges()
 	if detail_text.length() > 1500:
 		detail_text = detail_text.left(1500) + "\n... (Content truncated due to UI limits)"
 
+	detail_label.add_theme_color_override("default_color", Color("#777777"))
+	detail_label.add_theme_font_size_override("normal_font_size", 11)
+	detail_label.bbcode_enabled = true
 	detail_label.text = "[i]" + _format_text(detail_text) + "[/i]"
 	detail_margin.add_child(detail_label)
 
@@ -302,10 +280,15 @@ func _build_tool_inline(text: String) -> void:
 	)
 
 
-## 构建系统事件 — 极简居中文本
+## 构建系统事件 — 极简居右文本（无背景）
 func _build_system_event(text: String) -> void:
+	# 移除背景
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left", 32)
+	margin.add_theme_constant_override("margin_right", 60)
 	margin.add_theme_constant_override("margin_top", 4)
 	margin.add_theme_constant_override("margin_bottom", 4)
 	add_child(margin)
@@ -317,7 +300,7 @@ func _build_system_event(text: String) -> void:
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_label.add_theme_color_override("default_color", Color(0.4, 0.4, 0.4, 0.6))
 	_content_label.add_theme_font_size_override("normal_font_size", 11)
-	_content_label.text = "[center]" + _format_text(text) + "[/center]"
+	_content_label.text = _format_text(text)
 	margin.add_child(_content_label)
 
 
@@ -395,13 +378,8 @@ func append_subagent_log(text: String) -> void:
 func _build_plan(title: String, steps: Array) -> void:
 	for c in get_children(): c.queue_free()
 
-	# Plan 面板保留轻量卡片风格
-	var plan_sb := StyleBoxFlat.new()
-	plan_sb.bg_color = Color("#242424")
-	plan_sb.corner_radius_top_left = KPalette.RADIUS_MD
-	plan_sb.corner_radius_top_right = KPalette.RADIUS_MD
-	plan_sb.corner_radius_bottom_left = KPalette.RADIUS_MD
-	plan_sb.corner_radius_bottom_right = KPalette.RADIUS_MD
+	# Plan 面板改为透明
+	var plan_sb := StyleBoxEmpty.new()
 	plan_sb.content_margin_top = 16
 	plan_sb.content_margin_bottom = 16
 	plan_sb.content_margin_left = 18
@@ -465,13 +443,8 @@ func _build_plan(title: String, steps: Array) -> void:
 func _build_file_diff(file_path: String, content: String) -> void:
 	for c in get_children(): c.queue_free()
 
-	# Diff 面板样式
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#1a1a1a")
-	sb.border_color = Color("#333333")
-	sb.border_width_left = 4 # 左侧边带强调
-	sb.corner_radius_top_right = KPalette.RADIUS_SM
-	sb.corner_radius_bottom_right = KPalette.RADIUS_SM
+	# Diff 面板样式改为透明
+	var sb := StyleBoxEmpty.new()
 	sb.content_margin_top = 12
 	sb.content_margin_bottom = 12
 	sb.content_margin_left = 16
@@ -508,7 +481,7 @@ func _build_file_diff(file_path: String, content: String) -> void:
 	# 代码展示区
 	var code_bg := PanelContainer.new()
 	var code_sb := StyleBoxFlat.new()
-	code_sb.bg_color = Color("#0d0d0d")
+	code_sb.bg_color = Color("#2a2a2a")
 	code_sb.corner_radius_top_left = 4
 	code_sb.corner_radius_top_right = 4
 	code_sb.corner_radius_bottom_left = 4
@@ -558,13 +531,8 @@ func _build_file_diff(file_path: String, content: String) -> void:
 func _build_resume_prompt(task_count: int) -> void:
 	for c in get_children(): c.queue_free()
 
-	# 恢复提示气泡样式：深紫调暗色，表示提醒
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#1e1e2e") 
-	sb.border_color = KPalette.EMERALD
-	sb.border_width_left = 4
-	sb.corner_radius_top_right = KPalette.RADIUS_MD
-	sb.corner_radius_bottom_right = KPalette.RADIUS_MD
+	# 恢复提示气泡样式改为透明
+	var sb := StyleBoxEmpty.new()
 	sb.content_margin_top = 16
 	sb.content_margin_bottom = 16
 	sb.content_margin_left = 18

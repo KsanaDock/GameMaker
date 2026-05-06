@@ -8,15 +8,11 @@ var _saved_code_selection: String = ""
 var _saved_code_context: Dictionary = {}  # {text, file, from_line, to_line}
 
 const ChatScene = preload("res://addons/godot_maker/ui/chat/chat.tscn")
-const ProfileScene = preload("res://addons/godot_maker/ui/profile/profile.tscn")
-const LoginPanelScene = preload("res://addons/godot_maker/ui/login/login_panel.tscn")
 const TerminalScene = preload("res://addons/godot_maker/ui/terminal/terminal.tscn")
 const FsContextMenuScript = preload("res://addons/godot_maker/ui/chat/fs_context_menu.gd")
 
 var _chat: VBoxContainer
-var _profile: VBoxContainer
 var _terminal: VBoxContainer
-var _login_panel: Window
 var _auth: KAuthClient
 var _fs_context_menu: EditorContextMenuPlugin
 var _script_context_menu: EditorContextMenuPlugin
@@ -24,23 +20,13 @@ var _script_context_menu: EditorContextMenuPlugin
 
 func _enter_tree() -> void:
 	_auth = KAuthClient.new()
-	_auth.login_success.connect(_on_login_success)
-	_auth.login_failed.connect(_on_silent_login_failed)
 
 	# 注册 Chat Dock（右下区域）
 	_chat = ChatScene.instantiate()
 	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _chat)
 
-	# 注册 Profile Dock (仅在登录后显示)
-	_profile = ProfileScene.instantiate()
-	_profile.logout_requested.connect(_on_logout)
-	_profile.login_requested.connect(_show_login)
-	
-	if _auth.is_logged_in():
-		add_control_to_dock(DOCK_SLOT_RIGHT_BL, _profile)
 	
 	# 注册 Chat Dock 信号
-	_chat.login_requested.connect(_show_login)
 	_chat.api_key_saved.connect(_on_api_key_saved)
 	
 	# 同步 API Key 到环境变量
@@ -70,9 +56,6 @@ func _enter_tree() -> void:
 		# 对当前已经打开的脚本也立即执行一次
 		call_deferred("_hook_current_script_editor")
 
-	# 检查登录状态
-	if _auth.is_logged_in():
-		_auth.refresh_session()
 	
 	_initialize_docks()
 
@@ -230,52 +213,17 @@ func _exit_tree() -> void:
 		remove_control_from_docks(_chat)
 		_chat.queue_free()
 		_chat = null
-	if _profile:
-		remove_control_from_docks(_profile)
-		_profile.queue_free()
-		_profile = null
 	if _terminal:
 		remove_control_from_bottom_panel(_terminal)
 		_terminal.queue_free()
 		_terminal = null
-	if _login_panel and is_instance_valid(_login_panel):
-		_login_panel.queue_free()
-		_login_panel = null
 	print("[GodotMaker] Plugin unloaded.")
 
 
-func _show_login() -> void:
-	if _login_panel and is_instance_valid(_login_panel):
-		_login_panel.popup_centered()
-		_login_panel.grab_focus()
-		return
-		
-	_login_panel = LoginPanelScene.instantiate()
-	_login_panel.set_auth(_auth)
-	_login_panel.login_success.connect(_on_login_success)
-	
-	# 设置为瞬态窗口并置顶（模态）
-	_login_panel.transient = true
-	_login_panel.exclusive = true
-	
-	EditorInterface.get_base_control().add_child(_login_panel)
-	_login_panel.popup_centered(Vector2i(420, 580))
 
 func _on_api_key_saved() -> void:
-	if _chat:
-		_chat._check_auth_status()
-
-func _on_login_success(_token: String, _user: Dictionary) -> void:
-	_initialize_docks()
-	if _profile and not _profile.get_parent():
-		add_control_to_dock(DOCK_SLOT_RIGHT_BL, _profile)
-	if _chat:
-		_chat._check_auth_status()
-
-
-func _on_silent_login_failed(_error: String) -> void:
-	# 静默登录失败不再自动弹出窗口
 	pass
+
 
 
 func _initialize_docks() -> void:
@@ -284,15 +232,3 @@ func _initialize_docks() -> void:
 		if EditorInterface.get_base_control().has_meta("ksanadock_bridge"):
 			var bridge = EditorInterface.get_base_control().get_meta("ksanadock_bridge")
 			_chat.set_bridge(bridge)
-	if _profile:
-		_profile.initialize(_auth)
-
-
-func _on_logout() -> void:
-	_auth.logout()
-	if _chat:
-		_chat._clear_chat()
-		_chat._check_auth_status()
-	if _profile and _profile.get_parent():
-		remove_control_from_docks(_profile)
-	_show_login()
