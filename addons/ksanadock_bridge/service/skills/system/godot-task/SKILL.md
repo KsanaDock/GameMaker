@@ -45,11 +45,11 @@ $ARGUMENTS
    - **Step 2c: Write Manifest** — write analysis results to `assets/sprite_manifest.json`. This JSON is the **single source of truth** for all sprite slicing. See schema in `asset-analysis.md`.
    - **Step 2d: STOP & Ask User to Verify** — the manifest MUST be reviewed by the user before code generation. The user may correct animation names, frame counts, or fps. This is a **mandatory pause point**.
    - **VISUAL VISIBILITY RULE**: Every entity (Player, Enemy, Prop) MUST be visible in the scene. If no sprites/assets are available, you MUST add a `ColorRect` or `Polygon2D` as a temporary visual. NEVER leave a scene with only logic nodes and empty visual slots.
-3. **Import assets** — run `timeout 60 godot --headless --import` to generate `.import` files for any new textures, GLBs, or resources. Without this, `load()` fails with "No loader found" errors. Re-run after modifying existing assets.
+3. **Import assets** — call `godot_import` to generate `.import` files for any new textures, GLBs, or resources. Without this, `load()` fails with "No loader found" errors. Re-run after modifying existing assets.
 4. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
 5. **Generate script(s)** — write `.gd` files to `scripts/`
-6. **Pre-validate scripts** — catch compilation errors early before full project validation. For each newly written or modified `.gd` file, run `timeout 30 godot --headless --quit 2>&1` and filter the output for errors mentioning that file's path.
-7. **Validate project** — run `timeout 60 godot --headless --quit 2>&1` to parse-check all project scripts. **This is the primary quality gate.**
+6. **Pre-validate scripts** — catch compilation errors early before full project validation. For each newly written or modified `.gd` file, call `godot_validate` and filter the returned `errors[]` for entries matching that file's path.
+7. **Validate project** — call `godot_validate` to parse-check all project scripts. **This is the primary quality gate.**
 8. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 9. **Verify** — analyze the validation logs and any generated files to ensure:
    - **Task goal:** does the code/scene structure match the requirements?
@@ -80,20 +80,20 @@ You MUST execute work in **logical phases**. After you complete a functional chu
 If the user replies with a block of text containing `Error`, `Stack Trace`, or mentions a crash/bug, this is a **Runtime Error** from the Godot Engine.
 - DO NOT start new features.
 - IMMEDIATELY use `grep_search` to find the failing script or variable.
-- Fix the bug, validate via headless, and ask the user to play the official scene again.
+- Fix the bug, call `godot_validate`, and ask the user to play the official scene again.
 
-## Commands
+## Validation Tools
 
-```bash
-# Import new/modified assets (MUST run before scene builders):
-timeout 60 godot --headless --import
+Use these tools instead of raw shell commands — they auto-resolve the Godot executable (no PATH setup required):
 
-# Compile a scene builder (produces .tscn):
-timeout 60 godot --headless --script <path_to_gd_builder>
+| Tool | Args | Purpose |
+|------|------|---------|
+| `godot_import` | — | Import new/modified assets — run before scene builders |
+| `godot_run_script` | `script_path` (relative to project root) | Compile a scene builder → produces `.tscn` |
+| `godot_validate` | — | Parse-check all project scripts — **primary quality gate** |
+| `godot_find_executable` | — | Debug: show which Godot binary was found and how |
 
-# Validate all project scripts (parse check):
-timeout 60 godot --headless --quit 2>&1
-```
+If `godot_find_executable` returns `ok: false`, report the error message to the user and stop — do not attempt further headless operations.
 
 **Structured error recovery:** When a compilation error is caught:
 1. Parse the error — extract the file path, line number, and error type from Godot's output

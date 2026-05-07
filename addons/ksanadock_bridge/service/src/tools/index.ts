@@ -10,6 +10,7 @@ import { registerResearchTools } from './research-tools.js';
 import { registerShellTools } from './shell-tools.js';
 import { registerCheckpointTools } from './checkpoint-tools.js';
 import { registerStructuredEditTools } from './structured-edit-tools.js';
+import { registerGodotTools } from './godot-tools.js';
 
 export function setupTools(client: BridgeClient, projectRoot: string): ToolRegistry {
     const registry = new ToolRegistry();
@@ -23,5 +24,6 @@ export function setupTools(client: BridgeClient, projectRoot: string): ToolRegis
     registerShellTools(registry, projectRoot);
     registerCheckpointTools(registry, projectRoot);
     registerStructuredEditTools(registry, projectRoot);
+    registerGodotTools(registry, projectRoot);
     return registry;
 }
