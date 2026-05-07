@@ -1,5 +1,5 @@
 @tool
-extends PanelContainer
+extends VBoxContainer
 ## 单条聊天消息气泡 — Cursor/ChatGPT 极简暗黑风 V2
 ## 核心原则：AI 无背景直出文本，User 纯卡片无边框，Tool 内联轻量化
 
@@ -75,7 +75,6 @@ func _build(text: String, images: Array = []) -> void:
 		c.queue_free()
 
 	# ── 根节点：彻底透明，不带任何边框或背景 ──
-	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	# ── 工具日志和系统事件：极简内联处理，不走气泡路线 ──
@@ -91,17 +90,13 @@ func _build(text: String, images: Array = []) -> void:
 	margin_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if _role == Role.AI:
 		margin_container.add_theme_constant_override("margin_left", 4)
-		margin_container.add_theme_constant_override("margin_right", 40)
+		margin_container.add_theme_constant_override("margin_right", 4)
 	elif _role == Role.USER:
-		margin_container.add_theme_constant_override("margin_left", 60)
+		margin_container.add_theme_constant_override("margin_left", 4)
 		margin_container.add_theme_constant_override("margin_right", 4)
 	add_child(margin_container)
 
-	var bubble_container: Control
-	if _role == Role.AI:
-		bubble_container = MarginContainer.new()
-	else:
-		bubble_container = PanelContainer.new()
+	var bubble_container: PanelContainer = PanelContainer.new()
 		
 	bubble_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin_container.add_child(bubble_container)
@@ -109,8 +104,26 @@ func _build(text: String, images: Array = []) -> void:
 	match _role:
 		Role.USER:
 			bubble_container.theme_type_variation = &"BubbleUser"
+			var user_sb := StyleBoxFlat.new()
+			user_sb.bg_color = Color("#292929")
+			user_sb.corner_radius_top_left = 12
+			user_sb.corner_radius_top_right = 12
+			user_sb.corner_radius_bottom_left = 12
+			user_sb.corner_radius_bottom_right = 12
+			user_sb.content_margin_left = 16
+			user_sb.content_margin_top = 10
+			user_sb.content_margin_right = 16
+			user_sb.content_margin_bottom = 10
+			bubble_container.add_theme_stylebox_override("panel", user_sb)
 		Role.AI:
 			bubble_container.theme_type_variation = &"BubbleAI"
+			var ai_sb := StyleBoxFlat.new()
+			ai_sb.bg_color = Color("#292929")
+			ai_sb.content_margin_left = 16
+			ai_sb.content_margin_top = 10
+			ai_sb.content_margin_right = 16
+			ai_sb.content_margin_bottom = 10
+			bubble_container.add_theme_stylebox_override("panel", ai_sb)
 
 	# ── 内容布局 ──
 	var hbox := HBoxContainer.new()
@@ -190,8 +203,8 @@ func _add_user_rollback_button() -> void:
 func _build_tool_inline(text: String) -> void:
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left", 32)
-	margin.add_theme_constant_override("margin_right", 60)
+	margin.add_theme_constant_override("margin_left", 4)
+	margin.add_theme_constant_override("margin_right", 4)
 	margin.add_theme_constant_override("margin_top", 2)
 	margin.add_theme_constant_override("margin_bottom", 2)
 	add_child(margin)
@@ -226,7 +239,7 @@ func _build_tool_inline(text: String) -> void:
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_label.custom_minimum_size.x = 1
 	_content_label.add_theme_color_override("default_color", KPalette.TEXT_TOOL)
-	_content_label.add_theme_font_size_override("normal_font_size", 12)
+	_content_label.add_theme_font_size_override("normal_font_size", 18)
 	_content_label.text = summary
 	header_hbox.add_child(_content_label)
 
@@ -282,13 +295,11 @@ func _build_tool_inline(text: String) -> void:
 
 ## 构建系统事件 — 极简居右文本（无背景）
 func _build_system_event(text: String) -> void:
-	# 移除背景
-	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left", 32)
-	margin.add_theme_constant_override("margin_right", 60)
+	margin.add_theme_constant_override("margin_left", 4)
+	margin.add_theme_constant_override("margin_right", 4)
 	margin.add_theme_constant_override("margin_top", 4)
 	margin.add_theme_constant_override("margin_bottom", 4)
 	add_child(margin)
@@ -299,7 +310,7 @@ func _build_system_event(text: String) -> void:
 	_content_label.scroll_active = false
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_label.add_theme_color_override("default_color", Color(0.4, 0.4, 0.4, 0.6))
-	_content_label.add_theme_font_size_override("normal_font_size", 11)
+	_content_label.add_theme_font_size_override("normal_font_size", 18)
 	_content_label.text = _format_text(text)
 	margin.add_child(_content_label)
 
@@ -309,16 +320,17 @@ func _build_subagent(title: String) -> void:
 
 	# Subagent：极简风格，无厚重面板
 	var sb := StyleBoxEmpty.new()
-	sb.content_margin_left = 32
-	sb.content_margin_right = 16
+	sb.content_margin_left = 4
+	sb.content_margin_right = 4
 	sb.content_margin_top = 4
 	sb.content_margin_bottom = 4
-	add_theme_stylebox_override("panel", sb)
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", sb)
+	add_child(panel)
+	
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
-	add_child(vbox)
+	panel.add_child(vbox)
 
 	var header_hbox := HBoxContainer.new()
 	header_hbox.add_theme_constant_override("separation", 6)
@@ -365,7 +377,7 @@ func append_subagent_log(text: String) -> void:
 	var lbl := RichTextLabel.new()
 	lbl.bbcode_enabled = true
 	lbl.fit_content = true
-	lbl.add_theme_font_size_override("normal_font_size", 11)
+	lbl.add_theme_font_size_override("normal_font_size", 18)
 	lbl.add_theme_color_override("default_color", Color("#777777"))
 	lbl.text = "↳ [i]" + _format_text(text) + "[/i]"
 	_subagent_logs_container.add_child(lbl)
@@ -382,14 +394,15 @@ func _build_plan(title: String, steps: Array) -> void:
 	var plan_sb := StyleBoxEmpty.new()
 	plan_sb.content_margin_top = 16
 	plan_sb.content_margin_bottom = 16
-	plan_sb.content_margin_left = 18
-	plan_sb.content_margin_right = 18
-	add_theme_stylebox_override("panel", plan_sb)
-	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-
+	plan_sb.content_margin_left = 4
+	plan_sb.content_margin_right = 4
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", plan_sb)
+	add_child(panel)
+	
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
-	add_child(vbox)
+	panel.add_child(vbox)
 
 	var head := Label.new()
 	head.text = "📋 工作计划: " + title
@@ -447,14 +460,15 @@ func _build_file_diff(file_path: String, content: String) -> void:
 	var sb := StyleBoxEmpty.new()
 	sb.content_margin_top = 12
 	sb.content_margin_bottom = 12
-	sb.content_margin_left = 16
-	sb.content_margin_right = 16
-	add_theme_stylebox_override("panel", sb)
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
+	sb.content_margin_left = 4
+	sb.content_margin_right = 4
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", sb)
+	add_child(panel)
+	
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
-	add_child(vbox)
+	panel.add_child(vbox)
 
 	# 标题：图标 + 文件路径
 	var head := HBoxContainer.new()
@@ -481,7 +495,7 @@ func _build_file_diff(file_path: String, content: String) -> void:
 	# 代码展示区
 	var code_bg := PanelContainer.new()
 	var code_sb := StyleBoxFlat.new()
-	code_sb.bg_color = Color("#2a2a2a")
+	code_sb.bg_color = KPalette.BG_MAIN
 	code_sb.corner_radius_top_left = 4
 	code_sb.corner_radius_top_right = 4
 	code_sb.corner_radius_bottom_left = 4
@@ -535,14 +549,15 @@ func _build_resume_prompt(task_count: int) -> void:
 	var sb := StyleBoxEmpty.new()
 	sb.content_margin_top = 16
 	sb.content_margin_bottom = 16
-	sb.content_margin_left = 18
-	sb.content_margin_right = 18
-	add_theme_stylebox_override("panel", sb)
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
+	sb.content_margin_left = 4
+	sb.content_margin_right = 4
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", sb)
+	add_child(panel)
+	
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
-	add_child(vbox)
+	panel.add_child(vbox)
 
 	# 标题区
 	var head := HBoxContainer.new()
@@ -657,7 +672,7 @@ func _format_text(raw: String) -> String:
 	var inline_matches := inline_regex.search_all(result)
 	for m in inline_matches:
 		# Use bgcolor and color to simulate inline code without disabling word-wrap
-		result = result.replace(m.get_string(), "[bgcolor=#1a1a1a][color=#38bdf8] %s [/color][/bgcolor]" % m.get_string(1))
+		result = result.replace(m.get_string(), "[bgcolor=#292929][color=#38bdf8] %s [/color][/bgcolor]" % m.get_string(1))
 
 	# 加粗 **...**
 	var bold_regex := RegEx.new()

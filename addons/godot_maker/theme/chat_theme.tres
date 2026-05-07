@@ -8,7 +8,7 @@ content_margin_left = 16.0
 content_margin_top = 12.0
 content_margin_right = 16.0
 content_margin_bottom = 12.0
-bg_color = Color(0.219608, 0.219608, 0.219608, 1)
+bg_color = Color(0.15294, 0.15294, 0.16078, 1)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
@@ -26,8 +26,9 @@ content_margin_top = 4.0
 content_margin_right = 8.0
 content_margin_bottom = 4.0
 bg_color = Color(1, 1, 1, 0)
-border_width_right = 1
-border_width_bottom = 1
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.11764706, 0.11764706, 0.11764706, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -68,14 +69,14 @@ corner_radius_bottom_left = 50
 bg_color = Color(0.6, 0.6, 0.6, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Header"]
-bg_color = Color(0.164706, 0.164706, 0.164706, 1)
+bg_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_InputBG"]
 content_margin_left = 16.0
 content_margin_top = 8.0
 content_margin_right = 16.0
 content_margin_bottom = 8.0
-bg_color = Color(0.16470589, 0.16470589, 0.16470589, 1)
+bg_color = Color(0.16078432, 0.16078432, 0.16078432, 1)
 corner_radius_top_left = 24
 corner_radius_top_right = 24
 corner_radius_bottom_right = 24
@@ -95,10 +96,14 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_Panel"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2qy54"]
+bg_color = Color(0.16078432, 0.16078432, 0.16078432, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_VBoxBG"]
+bg_color = Color(0.160784, 0.160784, 0.160784, 1)
 
 [resource]
-default_font_size = 13
+default_font_size = 22
 BubbleAI/base_type = &"PanelContainer"
 BubbleAI/styles/panel = SubResource("StyleBoxFlat_7rxcu")
 BubbleUser/base_type = &"PanelContainer"
@@ -131,13 +136,15 @@ Label/colors/font_color = Color(0.909804, 0.909804, 0.909804, 1)
 OptionButton/styles/hover = SubResource("StyleBoxFlat_SelectionHover")
 OptionButton/styles/normal = SubResource("StyleBoxFlat_2xa3t")
 OptionButton/styles/pressed = SubResource("StyleBoxFlat_SelectionHover")
-PanelContainer/styles/panel = SubResource("StyleBoxEmpty_Panel")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_2qy54")
 RichTextLabel/colors/default_color = Color(0.909804, 0.909804, 0.909804, 1)
-RichTextLabel/font_sizes/normal_font_size = 14
+RichTextLabel/font_sizes/normal_font_size = 22
+ScrollContainer/styles/panel = SubResource("StyleBoxFlat_VBoxBG")
 TextEdit/colors/font_color = Color(0.909804, 0.909804, 0.909804, 1)
 TextEdit/colors/font_placeholder_color = Color(0.419608, 0.419608, 0.419608, 1)
-TextEdit/font_sizes/font_size = 14
+TextEdit/font_sizes/font_size = 26
 TextEdit/styles/focus = SubResource("StyleBoxEmpty_Ghost")
 TextEdit/styles/normal = SubResource("StyleBoxEmpty_Ghost")
 TextEdit/styles/read_only = SubResource("StyleBoxEmpty_Ghost")
 VBoxContainer/constants/separation = 4
+VBoxContainer/styles/normal = SubResource("StyleBoxFlat_VBoxBG")

@@ -17,6 +17,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="GodotMaker"
 config/description="AI-assisted development toolkit."
 config/tags=PackedStringArray("godot_maker", "ai", "plugin")
+run/main_scene="uid://bt5x607hqvv"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://addons/godot_maker/icons/SmallLogo.png"
 

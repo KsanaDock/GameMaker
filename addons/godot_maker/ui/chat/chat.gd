@@ -13,7 +13,6 @@ var _bridge: Node # The GodotMaker Bridge instance
 @onready var _input_field: TextEdit = %InputField
 @onready var _send_btn: Button = %SendBtn
 @onready var _clear_btn: Button = %ClearBtn
-@onready var _ctx_scene_btn: Button = %CtxSceneBtn
 @onready var _ref_list: HBoxContainer = %RefList
 @onready var _input_bg: PanelContainer = $InputBG
 @onready var _provider_btn: OptionButton = %ProviderBtn
@@ -37,7 +36,7 @@ signal api_key_saved
 @onready var _zai_input: LineEdit = %ZAIMiMoInput
 @onready var _zai_eye_btn: Button = %ZAIEyeBtn
 var _messages: Array[Dictionary] = []  # {role, content}
-var _current_bubble: PanelContainer = null
+var _current_bubble: VBoxContainer = null
 var _thinking_indicator: Control = null
 var _is_streaming := false
 var _active_subagents: Dictionary = {} # agentId -> MessageBubble
@@ -49,7 +48,7 @@ var _rollback_detail: RichTextLabel
 var _rollback_restore_btn: Button
 var _rollback_checkpoints: Array = []
 var _selected_checkpoint_id: String = ""
-var _pending_user_bubble: PanelContainer = null
+var _pending_user_bubble: VBoxContainer = null
 var _input_normal: StyleBoxFlat
 var _input_focused: StyleBoxFlat
 var _attach_img_btn: Button
@@ -71,7 +70,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	# 用主题色填充整个聊天区域，覆盖 Godot 编辑器 Dock 默认的 #1e1e1e 底色
+	# 用主题色填充整个聊天区域，覆盖 Godot 编辑器 Dock 默认的 #292929 底色
 	draw_rect(Rect2(Vector2.ZERO, size), KPalette.BG_MAIN)
 
 
@@ -177,7 +176,6 @@ func _update_ui_localization() -> void:
 func _connect_signals() -> void:
 	_send_btn.pressed.connect(_send_message)
 	_clear_btn.pressed.connect(_clear_chat)
-	_ctx_scene_btn.pressed.connect(_attach_scene_context)
 	_settings_btn.pressed.connect(_open_settings)
 	_settings_dialog.confirmed.connect(_on_settings_confirmed)
 	
@@ -369,6 +367,7 @@ func _on_openrouter_auth_checked(result: int, code: int, headers: PackedStringAr
 	
 	if _provider_btn:
 		_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
+		_provider_btn.add_theme_color_override("font_hover_color", Color(0.9, 0.2, 0.2))
 	_add_bubble(MessageBubble.Role.AI, "[img=16]res://addons/godot_maker/icons/ui/triangle-alert.svg[/img] OpenRouter API Key Validation Failed! Please check your key.")
 
 func _on_models_fetched(result: int, code: int, headers: PackedStringArray, body: PackedByteArray, http: HTTPRequest, key: String, provider: String) -> void:
@@ -387,12 +386,14 @@ func _on_models_fetched(result: int, code: int, headers: PackedStringArray, body
 			return
 	if _provider_btn:
 		_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
+		_provider_btn.add_theme_color_override("font_hover_color", Color(0.9, 0.2, 0.2))
 	
 	# Fallback logic: Only use fallback if it's not a clear authentication error
 	if code == 401 or code == 403:
 		_add_bubble(MessageBubble.Role.AI, "[img=16]res://addons/godot_maker/icons/ui/triangle-alert.svg[/img] API Key Validation Failed (Error %d)! Please check your key." % code)
 		if _provider_btn:
 			_provider_btn.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2)) # Red
+			_provider_btn.add_theme_color_override("font_hover_color", Color(0.9, 0.2, 0.2))
 		return
 
 	if provider == "xiaomi":
@@ -435,7 +436,9 @@ func _populate_models(models: Array) -> void:
 	for i in range(models.size()):
 		var m = models[i]
 		var m_id = m.get("id", "")
-		_model_select_btn.add_item(m_id, i)
+		var display_name = m_id.split("/")[-1] if "/" in m_id else m_id
+		_model_select_btn.add_item(display_name, i)
+		_model_select_btn.set_item_metadata(i, m_id)
 		
 	var es := EditorInterface.get_editor_settings()
 	var saved_model_key = "ksanadock/model_" + _current_provider
@@ -444,7 +447,7 @@ func _populate_models(models: Array) -> void:
 	_selected_model = ""
 	var match_idx = -1
 	for i in range(_model_select_btn.get_item_count()):
-		if _model_select_btn.get_item_text(i) == saved_model:
+		if _model_select_btn.get_item_metadata(i) == saved_model:
 			match_idx = i
 			break
 			
@@ -459,13 +462,14 @@ func _populate_models(models: Array) -> void:
 		_model_select_btn.item_selected.connect(_on_model_selected)
 
 func _on_model_selected(index: int) -> void:
-	_selected_model = _model_select_btn.get_item_text(index)
+	_selected_model = _model_select_btn.get_item_metadata(index)
 	var es := EditorInterface.get_editor_settings()
 	es.set_setting("ksanadock/model_" + _current_provider, _selected_model)
 
 func _handle_valid_key(key: String, provider: String) -> void:
 	if _provider_btn:
 		_provider_btn.add_theme_color_override("font_color", Color(0.2, 0.9, 0.2)) # Green
+		_provider_btn.add_theme_color_override("font_hover_color", Color(0.2, 0.9, 0.2))
 	if _auth:
 		_auth.set_api_key(key, provider)
 		
@@ -664,7 +668,7 @@ func _add_plan_bubble(data: Dictionary, tool_call_id: String) -> void:
 	if _current_bubble:
 		_current_bubble.queue_free()
 		_current_bubble = null
-	var bubble := PanelContainer.new()
+	var bubble := VBoxContainer.new()
 	bubble.set_script(MessageBubble)
 	bubble.setup_plan(data.get("title", ""), data.get("steps", []))
 	_msg_list.add_child(bubble)
@@ -673,7 +677,7 @@ func _add_plan_bubble(data: Dictionary, tool_call_id: String) -> void:
 
 
 func _add_resume_prompt_bubble(task_count: int) -> void:
-	var bubble := PanelContainer.new()
+	var bubble := VBoxContainer.new()
 	bubble.set_script(MessageBubble)
 	bubble.setup_resume_prompt(task_count)
 	_msg_list.add_child(bubble)
@@ -1098,7 +1102,7 @@ func _on_stream_error(message: String) -> void:
 	_current_bubble = null
 
 
-func _add_bubble(role: int, text: String) -> PanelContainer:
+func _add_bubble(role: int, text: String) -> VBoxContainer:
 	var bubble := _create_bubble(role, text)
 	if _msg_list:
 		_msg_list.add_child(bubble)
@@ -1106,8 +1110,8 @@ func _add_bubble(role: int, text: String) -> PanelContainer:
 	return bubble
 
 
-func _create_bubble(role: int, text: String, images: Array = []) -> PanelContainer:
-	var bubble := PanelContainer.new()
+func _create_bubble(role: int, text: String, images: Array = []) -> VBoxContainer:
+	var bubble := VBoxContainer.new()
 	bubble.set_script(MessageBubble)
 	bubble.theme = theme  # 确保气泡使用正确的主题
 	bubble.setup(role, text, images)
@@ -1158,26 +1162,12 @@ func _remove_thinking() -> void:
 		_thinking_indicator = null
 
 
-func _attach_scene_context() -> void:
-	var scene_root := EditorInterface.get_edited_scene_root()
-	if not scene_root:
-		_add_bubble(MessageBubble.Role.SYSTEM_EVENT, _tr("no_scene"))
-		return
-	var tree_text := _dump_tree(scene_root, 0)
-	add_context_reference("scene", tree_text, {"name": scene_root.name})
 
-
-func _dump_tree(node: Node, depth: int) -> String:
-	var indent := "  ".repeat(depth)
-	var line := "%s%s (%s)\n" % [indent, node.name, node.get_class()]
-	for child in node.get_children():
-		line += _dump_tree(child, depth + 1)
-	return line
 
 
 # ======== 图片上传功能 ========
 
-func _add_bubble_with_images(role: int, text: String, images: Array = []) -> PanelContainer:
+func _add_bubble_with_images(role: int, text: String, images: Array = []) -> VBoxContainer:
 	var bubble := _create_bubble(role, text, images)
 	if _msg_list:
 		_msg_list.add_child(bubble)
@@ -1256,7 +1246,7 @@ func _update_img_preview() -> void:
 		# Remove button
 		var remove_btn := Button.new()
 		remove_btn.text = "✕"
-		remove_btn.add_theme_font_size_override("font_size", 9)
+		remove_btn.add_theme_font_size_override("font_size", 26)
 		remove_btn.tooltip_text = _tr("remove_image")
 		remove_btn.pressed.connect(_on_remove_image.bind(i))
 		container.add_child(remove_btn)
